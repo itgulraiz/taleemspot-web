@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import Skeleton from 'react-skeleton-loader';
+import Skeleton from 'react-loading-skeleton';
 
 const boardLogos = {
   'Lahore': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
@@ -28,14 +28,12 @@ export default function SubjectPage() {
 
     const fetchData = async () => {
       try {
-        // Fetch the main document
         const docRef = doc(db, collectionName, subject);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
           setDocument(docSnap.data());
           
-          // Find the specific board and year
           const selectedPaper = docSnap.data().subjects.find(
             item => item.board === board && item.year === year
           );
@@ -45,7 +43,6 @@ export default function SubjectPage() {
           }
         }
 
-        // Fetch related papers (all papers for this subject)
         setRelatedPapers(docSnap.data().subjects || []);
         setLoading(false);
       } catch (error) {
@@ -61,15 +58,15 @@ export default function SubjectPage() {
     return (
       <div className="container mx-auto p-4">
         <div className="mb-8">
-          <Skeleton width="60%" height="32px" borderRadius="4px" />
-          <Skeleton width="40%" height="24px" borderRadius="4px" />
+          <Skeleton height={32} className="mb-4" width="60%" />
+          <Skeleton height={24} className="mb-8" width="40%" />
         </div>
         
         <div className="mb-8">
-          <Skeleton width="100%" height="480px" borderRadius="8px" />
+          <Skeleton height={480} className="mb-8" />
         </div>
         
-        <Skeleton width="150px" height="40px" borderRadius="4px" />
+        <Skeleton height={40} width={150} />
       </div>
     );
   }
@@ -99,7 +96,7 @@ export default function SubjectPage() {
             download
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+            className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-12"
           >
             Download PDF
           </a>
@@ -112,7 +109,7 @@ export default function SubjectPage() {
         {relatedPapers.map((paper, index) => (
           <div 
             key={index} 
-            className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 ${paper.board === board && paper.year === year ? 'ring-2 ring-green-500' : ''}`}
+            className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer ${paper.board === board && paper.year === year ? 'ring-2 ring-green-500' : ''}`}
             onClick={() => router.push(`/${collectionName}/${subject}/${paper.board}/${paper.year}`)}
           >
             <div className="p-4">
