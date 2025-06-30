@@ -1,133 +1,147 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { doc, getDocs, collection } from 'firebase/firestore';
-import { db } from '../../../../../lib/firebaseConfig'; // Updated path
-import Link from 'next/link';
-import Head from 'next/head';
-import Image from 'next/image';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
+import Skeleton from 'react-skeleton-loader';
 
-export default function PastPaperPage() {
+const boardLogos = {
+  'Lahore': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
+  'Faisalabad': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-2.png',
+  'Gujranwala': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-4.png',
+  'Rawalpindi': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
+  'Multan': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
+  'Sahiwal': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
+  'Bahawalpur': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
+  'Dera Ghazi Khan': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
+  'Sargodha': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png'
+};
+
+export default function SubjectPage() {
   const router = useRouter();
-  const { collection: coll, subject, board, year } = router.query;
-  const [paper, setPaper] = useState(null);
-  const [relatedPapers, setRelatedPapers] = useState([]);
+  const { collection: collectionName, subject, board, year } = router.query;
+  const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const boardLogos = {
-    Faisalabad: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-2.png',
-    Gujranwala: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-4.png',
-    Lahore: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-    Rawalpindi: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-    Multan: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-    Sahiwal: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-    Bahawalpur: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-    'Dera Ghazi Khan': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-    Sargodha: 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
-  };
+  const [relatedPapers, setRelatedPapers] = useState([]);
 
   useEffect(() => {
-    async function fetchPaper() {
-      if (!coll || !subject || !board || !year) return;
-      setLoading(true);
-      const docRef = doc(db, coll, subject);
-      const docSnap = await getDocs(collection(db, coll));
-      let selectedPaper = null;
-      const related = [];
+    if (!collectionName || !subject) return;
 
-      docSnap.forEach((doc) => {
-        const docData = doc.data();
-        docData.subjects?.forEach((sub) => {
-          if (doc.id === subject && sub.board === board && sub.year === year) {
-            selectedPaper = { ...sub, subject: doc.id };
-          } else if (doc.id === subject) {
-            related.push({ ...sub, subject: doc.id, collection: coll });
+    const fetchData = async () => {
+      try {
+        // Fetch the main document
+        const docRef = doc(db, collectionName, subject);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setDocument(docSnap.data());
+          
+          // Find the specific board and year
+          const selectedPaper = docSnap.data().subjects.find(
+            item => item.board === board && item.year === year
+          );
+          
+          if (selectedPaper) {
+            setDocument(prev => ({ ...prev, selectedPaper }));
           }
-        });
-      });
+        }
 
-      setPaper(selectedPaper);
-      setRelatedPapers(related);
-      setLoading(false);
-    }
-    fetchPaper();
-  }, [coll, subject, board, year]);
+        // Fetch related papers (all papers for this subject)
+        setRelatedPapers(docSnap.data().subjects || []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching document: ", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [collectionName, subject, board, year]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 animate-pulse">
-            <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
-            <div className="h-96 bg-gray-300 dark:bg-gray-700 rounded mb-4"></div>
-            <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
-          </div>
+      <div className="container mx-auto p-4">
+        <div className="mb-8">
+          <Skeleton width="60%" height="32px" borderRadius="4px" />
+          <Skeleton width="40%" height="24px" borderRadius="4px" />
         </div>
+        
+        <div className="mb-8">
+          <Skeleton width="100%" height="480px" borderRadius="8px" />
+        </div>
+        
+        <Skeleton width="150px" height="40px" borderRadius="4px" />
       </div>
     );
   }
 
-  if (!paper) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-        <p className="text-center text-gray-800 dark:text-white">Paper not found.</p>
-      </div>
-    );
+  if (!document) {
+    return <div className="container mx-auto p-4">Document not found</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-      <Head>
-        <title>{`${coll.replace('Punjab', '').replace('PastPapers', '')} Class Past Paper BISE ${board} ${year} ${subject}`}</title>
-        <meta name="description" content={`View and download ${subject} past paper for ${coll.replace('Punjab', '').replace('PastPapers', '')} class, BISE ${board}, ${year}.`} />
-      </Head>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-          {`${coll.replace('Punjab', '').replace('PastPapers', '')} Class Past Paper BISE ${board} ${year} ${subject}`}
-        </h1>
-        <iframe
-          src={paper.url.replace('/view?usp=drive_link', '/preview')}
-          with="100%"
-          height="480"
-          className="rounded-lg mb-4"
-          style={{ border: 'none' }}
-        />
-        <a
-          href={paper.url}
-          download
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors mb-6"
-        >
-          Download PDF
-        </a>
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Related Past Papers</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {relatedPapers.map((item, index) => (
-            <Link
-              key={index}
-              href={`/${item.collection}/${item.subject}/${item.board}/${item.year}`}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200"
-            >
-              <div className="flex flex-col items-center">
-                <div className="relative w-16 h-16 mb-2">
-                  <Image
-                    src={boardLogos[item.board] || boardLogos['Lahore']}
-                    alt={`${item.board} Logo`}
-                    layout="fill"
-                    objectFit="contain"
-                    className="rounded-full"
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-2">
+        {collectionName.replace('Punjab', '').replace('PastPapers', '')} Class {subject} Past Paper - {board} Board {year}
+      </h1>
+      <p className="text-gray-600 mb-8">Author: {document.metadata?.author || "TaleemSpot"}</p>
+
+      {document.selectedPaper?.url && (
+        <>
+          <iframe
+            src={document.selectedPaper.url.replace("/view?usp=drive_link", "/preview")}
+            width="100%"
+            height="480px"
+            className="border-none rounded-lg mb-6"
+          />
+          
+          <a
+            href={document.selectedPaper.url}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+          >
+            Download PDF
+          </a>
+        </>
+      )}
+
+      <h2 className="text-2xl font-bold mt-12 mb-6">More {subject} Past Papers</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {relatedPapers.map((paper, index) => (
+          <div 
+            key={index} 
+            className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 ${paper.board === board && paper.year === year ? 'ring-2 ring-green-500' : ''}`}
+            onClick={() => router.push(`/${collectionName}/${subject}/${paper.board}/${paper.year}`)}
+          >
+            <div className="p-4">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-green-100 border-2 border-green-300 flex items-center justify-center">
+                  <img 
+                    src={boardLogos[paper.board] || 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png'} 
+                    alt={`${paper.board} logo`} 
+                    className="w-14 h-14 rounded-full object-cover"
                   />
                 </div>
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-                  {item.collection.replace('Punjab', '').replace('PastPapers', '')} Class
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300">{item.subject}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{item.year}</p>
               </div>
-            </Link>
-          ))}
-        </div>
+              
+              <h2 className="text-lg font-bold text-center mb-1">
+                {collectionName.replace('Punjab', '').replace('PastPapers', '')} Class
+              </h2>
+              <p className="text-gray-600 text-center mb-1">{subject}</p>
+              <p className="text-green-600 font-semibold text-center">{paper.year}</p>
+              
+              <div className="mt-4 text-center">
+                <span className="text-sm text-gray-500">{paper.board} Board</span>
+              </div>
+            </div>
+            
+            <div className="bg-green-600 text-white text-center py-2">
+              View Papers
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
