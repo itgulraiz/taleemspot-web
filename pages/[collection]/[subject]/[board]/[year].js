@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
+import { db } from '../../../../firebaseConfig';
 import Skeleton from 'react-loading-skeleton';
 
 const boardLogos = {
@@ -16,19 +16,19 @@ const boardLogos = {
   'Sargodha': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png'
 };
 
-export default function SubjectPage() {
+export default function YearPage() {
   const router = useRouter();
-  const { collection: collectionName, subject, board, year } = router.query;
+  const { collection, subject, board, year } = router.query;
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [relatedPapers, setRelatedPapers] = useState([]);
 
   useEffect(() => {
-    if (!collectionName || !subject) return;
+    if (!collection || !subject) return;
 
     const fetchData = async () => {
       try {
-        const docRef = doc(db, collectionName, subject);
+        const docRef = doc(db, collection, subject);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
@@ -52,7 +52,7 @@ export default function SubjectPage() {
     };
 
     fetchData();
-  }, [collectionName, subject, board, year]);
+  }, [collection, subject, board, year]);
 
   if (loading) {
     return (
@@ -78,7 +78,7 @@ export default function SubjectPage() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-2">
-        {collectionName.replace('Punjab', '').replace('PastPapers', '')} Class {subject} Past Paper - {board} Board {year}
+        {collection.replace('Punjab', '').replace('PastPapers', '')} Class {subject} Past Paper - {board} Board {year}
       </h1>
       <p className="text-gray-600 mb-8">Author: {document.metadata?.author || "TaleemSpot"}</p>
 
@@ -110,7 +110,7 @@ export default function SubjectPage() {
           <div 
             key={index} 
             className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer ${paper.board === board && paper.year === year ? 'ring-2 ring-green-500' : ''}`}
-            onClick={() => router.push(`/${collectionName}/${subject}/${paper.board}/${paper.year}`)}
+            onClick={() => router.push(`/${collection}/${subject}/${paper.board}/${paper.year}`)}
           >
             <div className="p-4">
               <div className="flex justify-center mb-4">
@@ -124,7 +124,7 @@ export default function SubjectPage() {
               </div>
               
               <h2 className="text-lg font-bold text-center mb-1">
-                {collectionName.replace('Punjab', '').replace('PastPapers', '')} Class
+                {collection.replace('Punjab', '').replace('PastPapers', '')} Class
               </h2>
               <p className="text-gray-600 text-center mb-1">{subject}</p>
               <p className="text-green-600 font-semibold text-center">{paper.year}</p>
