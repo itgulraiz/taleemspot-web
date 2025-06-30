@@ -1,4 +1,4 @@
-import '../styles/globals.css';
+import '../styles/globals.css'; // Path is correct if styles/globals.css exists in root
 import 'tailwindcss/tailwind.css';
 import { useEffect } from 'react';
 
