@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { db } from '../../lib/firebaseConfig'; // Updated path
 import Link from 'next/link';
 import Head from 'next/head';
 import Image from 'next/image';
