@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useRouter } from 'next/router';
-import Skeleton from 'react-skeleton-loader';
+import Skeleton from 'react-loading-skeleton';
 
 const boardLogos = {
   'Lahore': 'http://taleemspot.com/wp-content/uploads/2025/04/download-removebg-preview-11.png',
@@ -52,14 +52,14 @@ export default function Home() {
   if (loading) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-8">Loading Resources...</h1>
+        <h1 className="text-3xl font-bold mb-8"><Skeleton width={300} /></h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg shadow-md p-4">
-              <Skeleton width="100%" height="150px" borderRadius="8px" />
-              <Skeleton width="80%" height="20px" borderRadius="4px" />
-              <Skeleton width="60%" height="16px" borderRadius="4px" />
-              <Skeleton width="40%" height="16px" borderRadius="4px" />
+              <Skeleton height={150} className="mb-2" />
+              <Skeleton width="80%" height={20} className="mb-1" />
+              <Skeleton width="60%" height={16} className="mb-1" />
+              <Skeleton width="40%" height={16} />
             </div>
           ))}
         </div>
@@ -76,7 +76,7 @@ export default function Home() {
           subjectDoc.subjects?.map((subject, index) => (
             <div 
               key={`${subjectDoc.id}-${index}`} 
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
               onClick={() => navigateToSubject('Punjab9thPastPapers', subjectDoc.id, subject.board, subject.year)}
             >
               <div className="p-4">
