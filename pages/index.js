@@ -36,7 +36,7 @@ const TaleemSpot = () => {
     }
   ];
 
-  const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
+  const AdSenseBanner = ({ slot = "7584383457", format = "auto" }) => {
     useEffect(() => {
       try {
         if (typeof window !== 'undefined' && window.adsbygoogle) {
@@ -51,7 +51,7 @@ const TaleemSpot = () => {
       <div className="my-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-center">
         <div className="text-red-600 font-bold text-lg mb-2">AdSense Banner Ads</div>
         <div className="text-sm text-gray-600">
-          Ad Slot: {slot} | Format: {format}
+          Ad Slot: "3940651912" | Format: "auto"
         </div>
         <div className="mt-2 text-xs text-gray-500">
           {/* Replace with actual AdSense code */}
@@ -198,13 +198,13 @@ const TaleemSpot = () => {
             </div>
 
             {/* AdSense Sidebar Ad */}
-            <AdSenseBanner slot="sidebar-ad-slot" format="vertical" />
+            <AdSenseBanner slot="8370851518" format="vertical" />
           </div>
 
           {/* Main Content Area */}
           <div className="lg:col-span-2">
             {/* Top AdSense Banner */}
-            <AdSenseBanner slot="top-banner-slot" format="horizontal" />
+            <AdSenseBanner slot="8773342044" format="horizontal" />
 
             {/* Content Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -244,7 +244,7 @@ const TaleemSpot = () => {
             </div>
 
             {/* Bottom AdSense Banner */}
-            <AdSenseBanner slot="bottom-banner-slot" format="horizontal" />
+            <AdSenseBanner slot="7688325238" format="horizontal" />
           </div>
 
           {/* Right Sidebar */}
@@ -272,7 +272,7 @@ const TaleemSpot = () => {
             </div>
 
             {/* Right Sidebar AdSense */}
-            <AdSenseBanner slot="right-sidebar-slot" format="vertical" />
+            <AdSenseBanner slot="7688325238" format="vertical" />
             
             {/* Stats Card */}
             <div className="bg-white rounded-lg shadow-md p-4">
