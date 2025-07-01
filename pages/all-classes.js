@@ -1,53 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, BookOpen, ChevronDown, Menu, X, Users } from 'lucide-react';
+import { Search, BookOpen, ExternalLink, ChevronDown, Menu, X, Users } from 'lucide-react';
+import { collection, getDocs } from "firebase/firestore";
+import { db } from '../firebaseConfig';
 import Head from 'next/head';
 
 export async function getStaticProps() {
   try {
-    // Define all collections/classes
     const collections = [
-      {
-        id: "Punjab9thPastPapers",
-        name: "9th Class",
-        description: "Past papers for 9th class students from all Punjab boards",
-        count: 12, // Number of subjects (approximate)
-      },
-      {
-        id: "Punjab10thPastPapers",
-        name: "10th Class",
-        description: "Past papers for 10th class students from all Punjab boards",
-        count: 12,
-      },
-      {
-        id: "Punjab11thPastPapers",
-        name: "11th Class", 
-        description: "Past papers for 11th class students from all Punjab boards",
-        count: 10,
-      },
-      {
-        id: "Punjab12thPastPapers",
-        name: "12th Class",
-        description: "Past papers for 12th class students from all Punjab boards",
-        count: 10,
-      },
-      {
-        id: "PunjabECATPastPapers",
-        name: "ECAT",
-        description: "Past papers for ECAT preparation from all Punjab universities",
-        count: 5,
-      },
-      {
-        id: "PunjabMDCATPastPapers",
-        name: "MDCAT",
-        description: "Past papers for MDCAT preparation from all Punjab universities",
-        count: 5,
-      }
+      "Punjab9thPastPapers",
+      "Punjab10thPastPapers",
+      "Punjab11thPastPapers",
+      "Punjab12thPastPapers",
+      "PunjabECATPastPapers",
+      "PunjabMDCATPastPapers"
     ];
+
+    let classCategories = [];
+    
+    // Process each collection
+    for (const collectionName of collections) {
+      try {
+        const collRef = collection(db, collectionName);
+        const snapshot = await getDocs(collRef);
+        
+        if (!snapshot.empty) {
+          // Extract class info for categories
+          const className = collectionName
+            .replace("Punjab", "")
+            .replace("PastPapers", "")
+            .replace("ECAT", "ECAT ")
+            .replace("MDCAT", "MDCAT ");
+          
+          const displayName = collectionName.includes("ECAT") || collectionName.includes("MDCAT") 
+            ? className.trim() 
+            : `${className.trim()} Class`;
+
+          // Calculate total subjects and papers
+          let subjectCount = 0;
+          let paperCount = 0;
+          
+          snapshot.forEach(doc => {
+            subjectCount++;
+            const data = doc.data();
+            if (data.subjects && Array.isArray(data.subjects)) {
+              paperCount += data.subjects.length;
+            }
+          });
+            
+          classCategories.push({
+            id: collectionName,
+            name: displayName,
+            count: paperCount,
+            subjectCount: subjectCount,
+            description: `Access ${displayName} past papers from all Punjab boards. Find papers for all subjects and years.`
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching collection ${collectionName}:`, error);
+      }
+    }
 
     return {
       props: {
-        classes: collections
+        classCategories
       },
       revalidate: 86400
     };
@@ -55,30 +71,31 @@ export async function getStaticProps() {
     console.error("Error in getStaticProps:", error);
     return {
       props: {
-        classes: []
+        classCategories: []
       },
       revalidate: 3600
     };
   }
 }
 
-const AllClasses = ({ classes }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredClasses, setFilteredClasses] = useState(classes);
+const AllClasses = ({ classCategories }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredClasses, setFilteredClasses] = useState(classCategories);
 
+  // Search functionality
   useEffect(() => {
     if (searchTerm.trim() === '') {
-      setFilteredClasses(classes);
+      setFilteredClasses(classCategories);
     } else {
-      const filtered = classes.filter(item => 
+      const filtered = classCategories.filter(item => 
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         item.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredClasses(filtered);
     }
-  }, [searchTerm, classes]);
+  }, [searchTerm, classCategories]);
 
   // AdSense Banner Component
   const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
@@ -110,7 +127,7 @@ const AllClasses = ({ classes }) => {
     <>
       <Head>
         <title>All Classes - TaleemSpot</title>
-        <meta name="description" content="Browse all classes including 9th, 10th, 11th, 12th, ECAT and MDCAT for past papers and educational resources." />
+        <meta name="description" content="Access past papers for all classes including 9th, 10th, 11th, 12th, ECAT and MDCAT from all Punjab boards." />
         <meta name="keywords" content="past papers, Punjab board, education, Pakistan, 9th class, 10th class, 11th class, 12th class, ECAT, MDCAT" />
         <link rel="canonical" href="https://taleemspot.com/all-classes" />
       </Head>
@@ -167,7 +184,7 @@ const AllClasses = ({ classes }) => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search Classes..."
+                    placeholder="Search classes..."
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -224,7 +241,7 @@ const AllClasses = ({ classes }) => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search Classes..."
+                      placeholder="Search classes..."
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -241,7 +258,7 @@ const AllClasses = ({ classes }) => {
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">All Classes</h1>
-              <p className="text-lg text-gray-600">Browse resources by class level</p>
+              <p className="text-lg text-gray-600">Browse past papers by class and educational level</p>
             </div>
 
             {/* AdSense Banner */}
@@ -251,40 +268,44 @@ const AllClasses = ({ classes }) => {
             {searchTerm && (
               <div className="mb-4 text-gray-700">
                 Showing results for: <span className="font-medium text-green-600">"{searchTerm}"</span>
-                <span className="ml-2 text-sm text-gray-500">({filteredClasses.length} items found)</span>
+                <span className="ml-2 text-sm text-gray-500">({filteredClasses.length} classes found)</span>
               </div>
             )}
 
             {/* Classes Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-8">
               {filteredClasses.length > 0 ? (
                 filteredClasses.map((classItem) => (
                   <Link 
-                    key={classItem.id} 
+                    key={classItem.id}
                     href={`/${classItem.id}`}
-                    className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-all duration-300 p-6 flex flex-col"
+                    className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                   >
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Users className="h-6 w-6 text-green-600" />
+                    <div className="p-6">
+                      <div className="flex items-center mb-4">
+                        <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                          <Users className="h-8 w-8 text-green-600" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-gray-800">{classItem.name}</h2>
+                          <p className="text-sm text-gray-600">{classItem.subjectCount} Subjects • {classItem.count} Papers</p>
+                        </div>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-800">
-                        {classItem.name}
-                      </h3>
-                    </div>
-                    <p className="text-gray-600 text-sm flex-grow mb-4">
-                      {classItem.description}
-                    </p>
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                        {classItem.count} subjects
-                      </span>
-                      <span className="text-blue-600 text-sm font-medium">View Resources</span>
+                      <p className="text-gray-600 mb-4 line-clamp-2">{classItem.description}</p>
+                      <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          Punjab Board
+                        </span>
+                        <div className="flex items-center text-blue-600 text-sm">
+                          <span>View Papers</span>
+                          <ExternalLink className="h-4 w-4 ml-1" />
+                        </div>
+                      </div>
                     </div>
                   </Link>
                 ))
               ) : (
-                <div className="col-span-3 text-center py-12">
+                <div className="col-span-full text-center py-12">
                   <div className="flex flex-col items-center justify-center">
                     <Search className="h-16 w-16 text-gray-300 mb-4" />
                     <h3 className="text-xl font-medium text-gray-600">No classes found</h3>
