@@ -336,7 +336,7 @@ const TaleemSpot = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2v-2a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
             </svg>
-            <span className="hidden md:inline">Download</span> TaleemSpot App <span className="hidden md:inline">- Access Anywhere!</span>
+            <span className="hidden md:inline">Download </span> Taleem Spot App <span className="hidden md:inline">- Access Anywhere!</span>
           </span>
           <div className="hidden md:flex ml-2 items-center">
             <span className="bg-yellow-500 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
