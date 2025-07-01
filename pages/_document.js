@@ -16,7 +16,7 @@ class MyDocument extends Document {
           <link rel="icon" href="/favicon.ico" />
           
           {/* Google AdSense */}
-          <meta name="google-adsense-account" content="ca-pub-1926773803487692" />
+          <meta name="google-adsense-account" content="ca-pub-xxxxxxxxxxxx" />
           <script
             async
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1926773803487692"
