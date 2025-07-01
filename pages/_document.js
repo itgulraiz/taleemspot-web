@@ -4,9 +4,12 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        <meta name="google-adsense-account" content="ca-pub-1926773803487692">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1926773803487692"
-     crossorigin="anonymous"></script>
+        <meta name="google-adsense-account" content="ca-pub-1926773803487692" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1926773803487692"
+          crossOrigin="anonymous"
+        />
       </Head>
       <body>
         <Main />
