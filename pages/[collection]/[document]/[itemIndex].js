@@ -53,6 +53,7 @@ export async function getStaticProps({ params }) {
       : `${className.trim()} Class`;
 
     // Create resource object
+    const driveId = extractDriveId(item.url);
     const resource = {
       id: `${collectionName}-${documentId}-${index}`,
       title: `${displayName} ${documentId} ${item.year} - ${item.board} Board`,
@@ -63,8 +64,8 @@ export async function getStaticProps({ params }) {
       year: item.year,
       type: "Past Paper",
       url: item.url,
-      downloadUrl: item.url.replace('view?usp=drive_link', 'export?format=pdf'),
-      driveId: extractDriveId(item.url),
+      downloadUrl: `https://drive.google.com/uc?export=download&id=${driveId}`,
+      driveId: driveId,
       collection: collectionName,
       documentId: documentId,
       itemIndex: index
@@ -88,9 +89,12 @@ export async function getStaticProps({ params }) {
             year: subject.year,
             type: "Past Paper",
             url: subject.url,
-            downloadUrl: subject.url.replace('view?usp=drive_link', 'export?format=pdf'),
+            downloadUrl: `https://drive.google.com/uc?export=download&id=${driveId}`,
             driveId: driveId,
-            path: `/${collectionName}/${documentId}/${i}`
+            collection: collectionName,
+            documentId: documentId,
+            itemIndex: i,
+                        path: `/${collectionName}/${documentId}/${i}`
           };
         });
     }
@@ -160,6 +164,9 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
 
   // Navigation menu structure with dropdowns
   const navMenus = [
@@ -302,9 +309,10 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
         {/* Navigation */}
         <nav className="bg-white shadow-md sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="flex justify-between items-center py-3">
+            {/* Desktop Header */}
+            <div className="hidden md:flex justify-between items-center py-3">
               {/* Logo */}
-              <div className="flex items-center space-x-3">
+              <Link href="/" className="flex items-center space-x-3">
                 <img 
                   src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
                   alt="TaleemSpot Logo" 
@@ -315,25 +323,108 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
                   }}
                 />
                 <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">TaleemSpot</span>
-              </div>
-
-              {/* Back to Home Button */}
-              <Link 
-                href="/"
-                className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-              >
-                <HomeIcon className="h-4 w-4" />
-                <span>Back to Home</span>
               </Link>
 
-              {/* Mobile Menu Button */}
+              {/* Search Bar - Desktop */}
+              <div className="flex flex-1 max-w-2xl mx-8">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search Past Papers, Subjects, Boards..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                      {searchSuggestions.map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+                          onClick={() => setSearchTerm(suggestion.text)}
+                        >
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <span>{suggestion.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile Header */}
+            <div className="flex md:hidden justify-between items-center py-3">
+              {/* Search Button */}
               <button 
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100"
+              >
+                <Search className="h-6 w-6" />
+              </button>
+              
+              {/* Logo */}
+              <Link href="/" className="text-center">
+                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                  TaleemSpot
+                </span>
+              </Link>
+              
+              {/* Menu Button */}
+              <button 
+                className="p-2 rounded-lg hover:bg-gray-100"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
+
+            {/* Mobile Search Overlay */}
+            {mobileSearchOpen && (
+              <div className="md:hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex flex-col">
+                <div className="bg-white p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">Search</h3>
+                    <button onClick={() => setMobileSearchOpen(false)}>
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search Past Papers, Subjects, Boards..."
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchSuggestions.length > 0 && (
+                    <div className="mt-2 bg-white rounded-lg max-h-60 overflow-y-auto">
+                      {searchSuggestions.map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+                          onClick={() => {
+                            setSearchTerm(suggestion.text);
+                            setMobileSearchOpen(false);
+                          }}
+                        >
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <span>{suggestion.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </nav>
 
@@ -444,7 +535,7 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
                   <h2 className="text-xl font-semibold mb-4">Preview Document</h2>
                   <div className="rounded-lg overflow-hidden border border-gray-300 shadow-sm">
                     <iframe 
-                      src={resource.url}
+                      src={`https://drive.google.com/file/d/${resource.driveId}/preview`}
                       width="100%" 
                       height="600" 
                       allow="autoplay"
@@ -456,7 +547,7 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
                 {/* Download Button */}
                 <div className="mb-8">
                   <a 
-                    href={resource.downloadUrl} 
+                    href={`https://drive.google.com/uc?export=download&id=${resource.driveId}`}
                     download
                     target="_blank"
                     rel="noopener noreferrer"
@@ -527,6 +618,11 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
                     </Link>
                   ))}
                 </div>
+                {subjects.length > 8 && (
+                  <Link href={`/${resource.collection}`} className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Subjects
+                  </Link>
+                )}
               </div>
               
               {/* Class Categories */}
@@ -640,6 +736,7 @@ const ResourceDetail = ({ resource, relatedResources, subjects, collections }) =
                 <Link href="/privacy-policy" className="hover:text-white">Privacy Policy</Link>
                 <Link href="/terms-of-service" className="hover:text-white">Terms of Service</Link>
                 <Link href="/cookie-policy" className="hover:text-white">Cookie Policy</Link>
+                <Link href="/sitemap" className="hover:text-white">Sitemap</Link>
               </div>
             </div>
           </div>
