@@ -401,7 +401,7 @@ const Sitemap = ({ links }) => {
                     <Link 
                       href={link.url} 
                       key={index}
-                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors"
+                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors text-gray-700"
                     >
                       {link.title}
                     </Link>
@@ -422,7 +422,7 @@ const Sitemap = ({ links }) => {
                     <Link 
                       href={link.url} 
                       key={index}
-                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors"
+                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors text-gray-700"
                     >
                       {link.title}
                     </Link>
@@ -446,7 +446,7 @@ const Sitemap = ({ links }) => {
                     <Link 
                       href={link.url} 
                       key={index}
-                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors"
+                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors text-gray-700"
                     >
                       {link.title}
                     </Link>
@@ -475,7 +475,7 @@ const Sitemap = ({ links }) => {
                     <Link 
                       href={link.url} 
                       key={index}
-                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors"
+                      className="p-3 border border-gray-200 rounded hover:bg-green-50 hover:border-green-300 transition-colors text-gray-700"
                     >
                       {link.title}
                     </Link>
