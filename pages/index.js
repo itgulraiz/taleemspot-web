@@ -36,28 +36,34 @@ const TaleemSpot = () => {
     }
   ];
 
-  // AdSense Banner component (no extra text, just ad)
-  const AdSenseBanner = ({ slot, format }) => {
+  const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
     useEffect(() => {
       try {
         if (typeof window !== 'undefined' && window.adsbygoogle) {
           (window.adsbygoogle = window.adsbygoogle || []).push({});
         }
       } catch (err) {
-        // ignore
+        console.log("AdSense error:", err);
       }
     }, []);
 
     return (
-      <div className="my-4 flex justify-center">
-        <ins 
-          className="adsbygoogle"
-          style={{display: 'block'}}
-          data-ad-client="ca-pub-1926773803487692"
-          data-ad-slot={slot}
-          data-ad-format={format}
-          data-full-width-responsive="true"
-        />
+      <div className="my-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-center">
+        <div className="text-red-600 font-bold text-lg mb-2">AdSense Banner Ads</div>
+        <div className="text-sm text-gray-600">
+          Ad Slot: {slot} | Format: {format}
+        </div>
+        <div className="mt-2 text-xs text-gray-500">
+          {/* Replace with actual AdSense code */}
+          <ins 
+            className="adsbygoogle"
+            style={{display: 'block'}}
+            data-ad-client="ca-pub-1926773803487692"
+            data-ad-slot="6001475521"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        </div>
       </div>
     );
   };
@@ -92,6 +98,7 @@ const TaleemSpot = () => {
               </div>
               <span className="text-xl font-bold text-green-600">TaleemSpot</span>
             </div>
+
             {/* Search Bar - Desktop */}
             <div className="hidden md:flex flex-1 max-w-2xl mx-8">
               <div className="relative w-full">
@@ -106,6 +113,7 @@ const TaleemSpot = () => {
                 <Menu className="h-5 w-5" />
               </button>
             </div>
+
             {/* Mobile Menu Button */}
             <button 
               className="md:hidden p-2"
@@ -114,6 +122,7 @@ const TaleemSpot = () => {
               {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
+
           {/* Mobile Search */}
           <div className="md:hidden pb-3">
             <div className="relative">
@@ -125,6 +134,7 @@ const TaleemSpot = () => {
               />
             </div>
           </div>
+
           {/* Navigation Tabs */}
           <div className={`${isMenuOpen ? 'block' : 'hidden'} md:block`}>
             <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-6 pb-3">
@@ -148,9 +158,6 @@ const TaleemSpot = () => {
           </div>
         </div>
       </nav>
-
-      {/* TOP AdSense Banner */}
-      <AdSenseBanner slot="3940651912" format="horizontal" />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -189,15 +196,19 @@ const TaleemSpot = () => {
                 </div>
               </div>
             </div>
-            {/* LEFT AdSense Banner */}
-            <AdSenseBanner slot="6001475521" format="vertical" />
+
+            {/* AdSense Sidebar Ad */}
+            <AdSenseBanner slot="sidebar-ad-slot" format="vertical" />
           </div>
 
           {/* Main Content Area */}
           <div className="lg:col-span-2">
+            {/* Top AdSense Banner */}
+            <AdSenseBanner slot="top-banner-slot" format="horizontal" />
+
             {/* Content Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              {staticData.map((item) => (
+              {staticData.map((item, index) => (
                 <div key={item.id}>
                   <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
                     <div className="p-4">
@@ -223,9 +234,17 @@ const TaleemSpot = () => {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Insert Ad after every 2nd item */}
+                  {(index + 1) % 2 === 0 && (
+                    <AdSenseBanner slot={`content-ad-${index}`} format="square" />
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Bottom AdSense Banner */}
+            <AdSenseBanner slot="bottom-banner-slot" format="horizontal" />
           </div>
 
           {/* Right Sidebar */}
@@ -251,8 +270,10 @@ const TaleemSpot = () => {
                 ))}
               </div>
             </div>
-            {/* RIGHT AdSense Banner */}
-            <AdSenseBanner slot="8370851518" format="vertical" />
+
+            {/* Right Sidebar AdSense */}
+            <AdSenseBanner slot="right-sidebar-slot" format="vertical" />
+            
             {/* Stats Card */}
             <div className="bg-white rounded-lg shadow-md p-4">
               <h3 className="font-bold text-gray-800 mb-4">Our Stats</h3>
@@ -273,8 +294,6 @@ const TaleemSpot = () => {
             </div>
           </div>
         </div>
-        {/* BOTTOM AdSense Banner */}
-        <AdSenseBanner slot="7688325238" format="horizontal" />
       </div>
 
       {/* Footer */}
