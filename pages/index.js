@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Menu, X, Download, BookOpen, Users, Award } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Menu, X, Download, BookOpen, Users } from 'lucide-react';
 
 const TaleemSpot = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -36,18 +36,37 @@ const TaleemSpot = () => {
     }
   ];
 
-  const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => (
-    <div className="my-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-center">
-      <div className="text-red-600 font-bold text-lg mb-2">AdSense Banner Ads</div>
-      <div className="text-sm text-gray-600">
-        Ad Slot: {slot} | Format: {format}
+  const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
+    useEffect(() => {
+      try {
+        if (typeof window !== 'undefined' && window.adsbygoogle) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch (err) {
+        console.log("AdSense error:", err);
+      }
+    }, []);
+
+    return (
+      <div className="my-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-center">
+        <div className="text-red-600 font-bold text-lg mb-2">AdSense Banner Ads</div>
+        <div className="text-sm text-gray-600">
+          Ad Slot: {slot} | Format: {format}
+        </div>
+        <div className="mt-2 text-xs text-gray-500">
+          {/* Replace with actual AdSense code */}
+          <ins 
+            className="adsbygoogle"
+            style={{display: 'block'}}
+            data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+            data-ad-slot={slot}
+            data-ad-format={format}
+            data-full-width-responsive="true"
+          />
+        </div>
       </div>
-      <div className="mt-2 text-xs text-gray-500">
-        {/* Replace this div with actual AdSense code */}
-        [AdSense Ad Code Goes Here]
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -206,7 +225,7 @@ const TaleemSpot = () => {
                           </p>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      <p className="text-sm text-gray-600 mb-3">
                         {item.description}
                       </p>
                       <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2">
@@ -240,7 +259,7 @@ const TaleemSpot = () => {
                       <BookOpen className="h-5 w-5 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-800 line-clamp-2">
+                      <h4 className="text-sm font-medium text-gray-800">
                         {item.title}
                       </h4>
                       <p className="text-xs text-gray-600 mt-1">
