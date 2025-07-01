@@ -1,61 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, BookOpen, ExternalLink, ChevronDown, Menu, X, Users } from 'lucide-react';
+import { Search, BookOpen, ChevronDown, Menu, X, Users } from 'lucide-react';
 import Head from 'next/head';
 
 export async function getStaticProps() {
-  // Define all classes
-  const classes = [
-    {
-      id: "Punjab9thPastPapers",
-      name: "9th Class",
-      description: "Past papers for 9th Class from all Punjab boards",
-      icon: "📚",
-      count: 50 // You might want to fetch the actual count from Firebase
-    },
-    {
-      id: "Punjab10thPastPapers",
-      name: "10th Class",
-      description: "Past papers for 10th Class from all Punjab boards",
-      icon: "📚",
-      count: 50
-    },
-    {
-      id: "Punjab11thPastPapers",
-      name: "11th Class",
-      description: "Past papers for 11th Class from all Punjab boards",
-      icon: "📚",
-      count: 40
-    },
-    {
-      id: "Punjab12thPastPapers",
-      name: "12th Class",
-      description: "Past papers for 12th Class from all Punjab boards",
-      icon: "📚",
-      count: 40
-    },
-    {
-      id: "PunjabECATPastPapers",
-      name: "ECAT",
-      description: "Engineering College Admission Test past papers",
-      icon: "🔬",
-      count: 30
-    },
-    {
-      id: "PunjabMDCATPastPapers",
-      name: "MDCAT",
-      description: "Medical College Admission Test past papers",
-      icon: "🧬",
-      count: 30
-    }
-  ];
+  try {
+    // Define all collections/classes
+    const collections = [
+      {
+        id: "Punjab9thPastPapers",
+        name: "9th Class",
+        description: "Past papers for 9th class students from all Punjab boards",
+        count: 12, // Number of subjects (approximate)
+      },
+      {
+        id: "Punjab10thPastPapers",
+        name: "10th Class",
+        description: "Past papers for 10th class students from all Punjab boards",
+        count: 12,
+      },
+      {
+        id: "Punjab11thPastPapers",
+        name: "11th Class", 
+        description: "Past papers for 11th class students from all Punjab boards",
+        count: 10,
+      },
+      {
+        id: "Punjab12thPastPapers",
+        name: "12th Class",
+        description: "Past papers for 12th class students from all Punjab boards",
+        count: 10,
+      },
+      {
+        id: "PunjabECATPastPapers",
+        name: "ECAT",
+        description: "Past papers for ECAT preparation from all Punjab universities",
+        count: 5,
+      },
+      {
+        id: "PunjabMDCATPastPapers",
+        name: "MDCAT",
+        description: "Past papers for MDCAT preparation from all Punjab universities",
+        count: 5,
+      }
+    ];
 
-  return {
-    props: {
-      classes
-    },
-    revalidate: 86400 // Revalidate once per day
-  };
+    return {
+      props: {
+        classes: collections
+      },
+      revalidate: 86400
+    };
+  } catch (error) {
+    console.error("Error in getStaticProps:", error);
+    return {
+      props: {
+        classes: []
+      },
+      revalidate: 3600
+    };
+  }
 }
 
 const AllClasses = ({ classes }) => {
@@ -68,9 +72,9 @@ const AllClasses = ({ classes }) => {
     if (searchTerm.trim() === '') {
       setFilteredClasses(classes);
     } else {
-      const filtered = classes.filter(classItem => 
-        classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        classItem.description.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = classes.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        item.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredClasses(filtered);
     }
@@ -106,8 +110,8 @@ const AllClasses = ({ classes }) => {
     <>
       <Head>
         <title>All Classes - TaleemSpot</title>
-        <meta name="description" content="Browse past papers by class - 9th, 10th, 11th, 12th, ECAT, MDCAT and more on TaleemSpot." />
-        <meta name="keywords" content="past papers, Punjab board, 9th class, 10th class, 11th class, 12th class, ECAT, MDCAT" />
+        <meta name="description" content="Browse all classes including 9th, 10th, 11th, 12th, ECAT and MDCAT for past papers and educational resources." />
+        <meta name="keywords" content="past papers, Punjab board, education, Pakistan, 9th class, 10th class, 11th class, 12th class, ECAT, MDCAT" />
         <link rel="canonical" href="https://taleemspot.com/all-classes" />
       </Head>
       
@@ -237,7 +241,7 @@ const AllClasses = ({ classes }) => {
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">All Classes</h1>
-              <p className="text-lg text-gray-600">Browse past papers by class</p>
+              <p className="text-lg text-gray-600">Browse resources by class level</p>
             </div>
 
             {/* AdSense Banner */}
@@ -247,43 +251,40 @@ const AllClasses = ({ classes }) => {
             {searchTerm && (
               <div className="mb-4 text-gray-700">
                 Showing results for: <span className="font-medium text-green-600">"{searchTerm}"</span>
-                <span className="ml-2 text-sm text-gray-500">({filteredClasses.length} classes found)</span>
+                <span className="ml-2 text-sm text-gray-500">({filteredClasses.length} items found)</span>
               </div>
             )}
 
             {/* Classes Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 my-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-8">
               {filteredClasses.length > 0 ? (
                 filteredClasses.map((classItem) => (
                   <Link 
-                    key={classItem.id}
+                    key={classItem.id} 
                     href={`/${classItem.id}`}
-                    className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-all duration-300 p-5 flex flex-col"
+                    className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-all duration-300 p-6 flex flex-col"
                   >
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                        {classItem.icon}
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Users className="h-6 w-6 text-green-600" />
                       </div>
-                      <h3 className="font-bold text-xl text-gray-800">
+                      <h3 className="text-xl font-bold text-gray-800">
                         {classItem.name}
                       </h3>
                     </div>
-                    <p className="text-gray-600 mb-4 text-sm flex-grow">
+                    <p className="text-gray-600 text-sm flex-grow mb-4">
                       {classItem.description}
                     </p>
-                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                        {classItem.count}+ Papers
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                        {classItem.count} subjects
                       </span>
-                      <div className="flex items-center text-blue-600 text-sm">
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        <span>Explore</span>
-                      </div>
+                      <span className="text-blue-600 text-sm font-medium">View Resources</span>
                     </div>
                   </Link>
                 ))
               ) : (
-                <div className="col-span-full text-center py-12">
+                <div className="col-span-3 text-center py-12">
                   <div className="flex flex-col items-center justify-center">
                     <Search className="h-16 w-16 text-gray-300 mb-4" />
                     <h3 className="text-xl font-medium text-gray-600">No classes found</h3>
@@ -375,19 +376,6 @@ const AllClasses = ({ classes }) => {
                     </svg>
                     +92 300 1234567
                   </p>
-                </div>
-                <div className="mt-4">
-                  <h5 className="font-medium mb-2">Subscribe to our newsletter</h5>
-                  <form className="flex">
-                    <input
-                      type="email"
-                      placeholder="Enter your email"
-                      className="py-2 px-3 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-1 focus:ring-green-500 w-full text-sm"
-                    />
-                    <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-r-lg text-sm transition-colors">
-                      Subscribe
-                    </button>
-                  </form>
                 </div>
               </div>
             </div>
