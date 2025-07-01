@@ -58,9 +58,9 @@ const TaleemSpot = () => {
           <ins 
             className="adsbygoogle"
             style={{display: 'block'}}
-            data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-            data-ad-slot={slot}
-            data-ad-format={format}
+            data-ad-client="ca-pub-1926773803487692"
+            data-ad-slot="6001475521"
+            data-ad-format="auto"
             data-full-width-responsive="true"
           />
         </div>
