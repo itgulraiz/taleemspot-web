@@ -14,7 +14,7 @@ const TaleemSpot = () => {
       subject: "Biology",
       class: "9th",
       url: "#",
-      thumbnail: "/drawbles/biology-icon.png"
+      thumbnail: "/drawables/biology-icon.png"
     },
     {
       id: 2,
@@ -23,7 +23,7 @@ const TaleemSpot = () => {
       subject: "Physics", 
       class: "9th",
       url: "#",
-      thumbnail: "/drawbles/physics-icon.png"
+      thumbnail: "/drawables/physics-icon.png"
     },
     {
       id: 3,
@@ -32,7 +32,35 @@ const TaleemSpot = () => {
       subject: "Chemistry",
       class: "9th", 
       url: "#",
-      thumbnail: "/drawbles/chemistry-icon.png"
+      thumbnail: "/drawables/chemistry-icon.png"
+    }
+  ];
+
+  // Categories data
+  const categoriesData = [
+    {
+      id: 1,
+      name: "Biology",
+      count: 24,
+      icon: "/drawables/biology-icon.png"
+    },
+    {
+      id: 2,
+      name: "Physics",
+      count: 18,
+      icon: "/drawables/physics-icon.png"
+    },
+    {
+      id: 3,
+      name: "Chemistry",
+      count: 15,
+      icon: "/drawables/chemistry-icon.png"
+    },
+    {
+      id: 4,
+      name: "Mathematics",
+      count: 22,
+      icon: "/drawables/math-icon.png"
     }
   ];
 
@@ -85,15 +113,15 @@ const TaleemSpot = () => {
             {/* Logo */}
             <div className="flex items-center space-x-2">
               <img 
-                src="/drawbles/logo.png" 
+                src="/drawables/logo.png" 
                 alt="TaleemSpot Logo" 
                 className="h-10 w-10"
                 onError={(e) => {
+                  e.target.onerror = null;
                   e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
                 }}
               />
-              <div className="hidden items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
                 <BookOpen className="h-6 w-6 text-green-600" />
               </div>
               <span className="text-xl font-bold text-green-600">TaleemSpot</span>
@@ -167,15 +195,15 @@ const TaleemSpot = () => {
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
               <div className="flex items-center space-x-2 mb-4">
                 <img 
-                  src="/drawbles/logo.png" 
+                  src="/drawables/logo.png" 
                   alt="Class Logo" 
                   className="h-12 w-12 rounded"
                   onError={(e) => {
+                    e.target.onerror = null;
                     e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
                   }}
                 />
-                <div className="hidden items-center justify-center w-12 h-12 bg-green-100 rounded">
+                <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded">
                   <BookOpen className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
@@ -196,9 +224,6 @@ const TaleemSpot = () => {
                 </div>
               </div>
             </div>
-
-            {/* AdSense Sidebar Ad */}
-            <AdSenseBanner slot="sidebar-ad-slot" format="vertical" />
           </div>
 
           {/* Main Content Area */}
@@ -208,37 +233,30 @@ const TaleemSpot = () => {
 
             {/* Content Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              {staticData.map((item, index) => (
-                <div key={item.id}>
-                  <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                    <div className="p-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                          <BookOpen className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-800 text-sm leading-tight">
-                            {item.title}
-                          </h3>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {item.subject} • {item.class} Class
-                          </p>
-                        </div>
+              {staticData.map((item) => (
+                <div key={item.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                  <div className="p-4">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <BookOpen className="h-6 w-6 text-green-600" />
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">
-                        {item.description}
-                      </p>
-                      <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2">
-                        <Download className="h-4 w-4" />
-                        <span>Download PDF</span>
-                      </button>
+                      <div>
+                        <h3 className="font-bold text-gray-800 text-sm leading-tight">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {item.subject} • {item.class} Class
+                        </p>
+                      </div>
                     </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {item.description}
+                    </p>
+                    <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2">
+                      <Download className="h-4 w-4" />
+                      <span>Download PDF</span>
+                    </button>
                   </div>
-                  
-                  {/* Insert Ad after every 2nd item */}
-                  {(index + 1) % 2 === 0 && (
-                    <AdSenseBanner slot={`content-ad-${index}`} format="square" />
-                  )}
                 </div>
               ))}
             </div>
@@ -249,30 +267,27 @@ const TaleemSpot = () => {
 
           {/* Right Sidebar */}
           <div className="lg:col-span-1">
-            {/* Latest Posts */}
+            {/* Categories */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <h3 className="font-bold text-gray-800 mb-4 pb-2 border-b">Latest Post</h3>
+              <h3 className="font-bold text-gray-800 mb-4 pb-2 border-b">Categories</h3>
               <div className="space-y-3">
-                {staticData.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex space-x-3">
-                    <div className="w-12 h-12 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
-                      <BookOpen className="h-5 w-5 text-green-600" />
+                {categoriesData.map((category) => (
+                  <div key={category.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 rounded flex items-center justify-center">
+                        <BookOpen className="h-4 w-4 text-green-600" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-800">
+                        {category.name}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-800">
-                        {item.title}
-                      </h4>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {item.subject} • {item.class}
-                      </p>
-                    </div>
+                    <span className="text-xs bg-gray-200 px-2 py-1 rounded-full">
+                      {category.count}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Right Sidebar AdSense */}
-            <AdSenseBanner slot="right-sidebar-slot" format="vertical" />
             
             {/* Stats Card */}
             <div className="bg-white rounded-lg shadow-md p-4">
@@ -303,15 +318,15 @@ const TaleemSpot = () => {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <img 
-                  src="/drawbles/logo.png" 
+                  src="/drawables/logo.png" 
                   alt="TaleemSpot Logo" 
                   className="h-8 w-8"
                   onError={(e) => {
+                    e.target.onerror = null;
                     e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
                   }}
                 />
-                <div className="hidden items-center justify-center w-8 h-8 bg-green-100 rounded-full">
+                <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
                   <BookOpen className="h-4 w-4 text-green-600" />
                 </div>
                 <span className="text-lg font-bold">TaleemSpot</span>
