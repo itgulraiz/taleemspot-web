@@ -65,7 +65,7 @@ export async function getStaticProps() {
                     year: subject.year,
                     type: "Past Paper",
                     url: subject.url,
-                    downloadUrl: driveId ? `https://drive.google.com/uc?export=download&id=${driveId}` : subject.url,
+                    downloadUrl: `https://drive.google.com/uc?export=download&id=${driveId}`,
                     driveId: driveId,
                     collection: collectionName,
                     documentId: doc.id,
@@ -152,6 +152,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
   const [searchTerm, setSearchTerm] = useState('');
   const [openDropdown, setOpenDropdown] = useState(null);
   const [filteredData, setFilteredData] = useState(resources || []);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
 
   // Navigation menu structure with dropdowns
   const navMenus = [
@@ -190,17 +192,72 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredData(resources);
+      setSearchSuggestions([]);
     } else {
-      const filtered = allResources.filter(item => 
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.board.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchTerms = searchTerm.toLowerCase().split(' ');
+      const filtered = allResources.filter(item => {
+        // Check if ALL search terms match any of the fields
+        return searchTerms.every(term => 
+          item.title.toLowerCase().includes(term) || 
+          item.description.toLowerCase().includes(term) ||
+          item.subject.toLowerCase().includes(term) ||
+          item.class.toLowerCase().includes(term) ||
+          item.board.toLowerCase().includes(term) ||
+          item.year.toString().includes(term)
+        );
+      });
+      
       setFilteredData(filtered);
+      
+      // Generate search suggestions
+      if (searchTerm.length > 2) {
+        const suggestions = [];
+        
+        // Add subject suggestions
+        subjectCategories.forEach(subject => {
+          if (subject.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.push({ text: subject.name, type: 'subject' });
+          }
+        });
+        
+        // Add board suggestions
+        boardCategories.forEach(board => {
+          if (board.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.push({ text: board.name, type: 'board' });
+          }
+        });
+        
+        // Add class suggestions
+        classCategories.forEach(cls => {
+          if (cls.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.push({ text: cls.name, type: 'class' });
+          }
+        });
+        
+        // Add year suggestions
+        const years = [...new Set(allResources.map(item => item.year))];
+        years.forEach(year => {
+          if (year.toString().includes(searchTerm)) {
+            suggestions.push({ text: year.toString(), type: 'year' });
+          }
+        });
+        
+        // Add combined suggestions
+        subjectCategories.forEach(subject => {
+          classCategories.forEach(cls => {
+            const combined = `${subject.name} ${cls.name}`;
+            if (combined.toLowerCase().includes(searchTerm.toLowerCase())) {
+              suggestions.push({ text: combined, type: 'combined' });
+            }
+          });
+        });
+        
+        setSearchSuggestions(suggestions.slice(0, 10)); // Limit to 10 suggestions
+      } else {
+        setSearchSuggestions([]);
+      }
     }
-  }, [searchTerm, resources, allResources]);
+  }, [searchTerm, resources, allResources, subjectCategories, boardCategories, classCategories]);
 
   // Toggle dropdown menu
   const toggleDropdown = (e, menuName) => {
@@ -332,9 +389,10 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
         {/* Navigation */}
         <nav className="bg-white shadow-md sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="flex justify-between items-center py-3">
+            {/* Desktop Header */}
+            <div className="hidden md:flex justify-between items-center py-3">
               {/* Logo */}
-              <div className="flex items-center space-x-3">
+              <Link href="/" className="flex items-center space-x-3">
                 <img 
                   src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
                   alt="TaleemSpot Logo" 
@@ -345,10 +403,10 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                   }}
                 />
                 <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">TaleemSpot</span>
-              </div>
+              </Link>
 
               {/* Search Bar - Desktop */}
-              <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+              <div className="flex flex-1 max-w-2xl mx-8">
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
@@ -358,31 +416,95 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                      {searchSuggestions.map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+                          onClick={() => setSearchTerm(suggestion.text)}
+                        >
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <span>{suggestion.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Mobile Menu Button */}
+            </div>
+            
+            {/* Mobile Header */}
+            <div className="flex md:hidden justify-between items-center py-3">
+              {/* Search Button */}
               <button 
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100"
+              >
+                <Search className="h-6 w-6" />
+              </button>
+              
+              {/* Logo */}
+              <Link href="/" className="text-center">
+                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                  TaleemSpot
+                </span>
+              </Link>
+              
+              {/* Menu Button */}
+              <button 
+                className="p-2 rounded-lg hover:bg-gray-100"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
 
-            {/* Mobile Search */}
-            <div className="md:hidden pb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search Past Papers, Subjects, Boards..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            {/* Mobile Search Overlay */}
+            {mobileSearchOpen && (
+              <div className="md:hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex flex-col">
+                <div className="bg-white p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">Search</h3>
+                    <button onClick={() => setMobileSearchOpen(false)}>
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search Past Papers, Subjects, Boards..."
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchSuggestions.length > 0 && (
+                    <div className="mt-2 bg-white rounded-lg max-h-60 overflow-y-auto">
+                      {searchSuggestions.map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+                          onClick={() => {
+                            setSearchTerm(suggestion.text);
+                            setMobileSearchOpen(false);
+                          }}
+                        >
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <span>{suggestion.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </nav>
 
@@ -490,7 +612,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                   Class
                 </h3>
                 <div className="space-y-2">
-                  {classCategories.map((category) => (
+                  {classCategories.slice(0, 4).map((category) => (
                     <Link
                       href={`/${category.id}`}
                       key={category.id}
@@ -505,6 +627,11 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </Link>
                   ))}
                 </div>
+                {classCategories.length > 4 && (
+                  <Link href="/all-classes" className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Classes
+                  </Link>
+                )}
               </div>
 
               {/* Board Categories */}
@@ -514,7 +641,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                   Boards
                 </h3>
                 <div className="space-y-2">
-                  {boardCategories.slice(0, 8).map((board) => (
+                  {boardCategories.slice(0, 4).map((board) => (
                     <Link
                       href={`/board/${board.name.replace(' Board', '')}`}
                       key={board.id}
@@ -529,6 +656,11 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </Link>
                   ))}
                 </div>
+                {boardCategories.length > 4 && (
+                  <Link href="/all-boards" className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Boards
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -574,8 +706,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                           </span>
                         </div>
                       </div>
-                      <div className="mt-3 md:mt-0">
-                        <a 
+                      <div className="mt-3 md:mt-0 flex flex-wrap gap-2">
+                        <Link 
                           href={resources[0].path}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -583,6 +715,17 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                         >
                           <ExternalLink className="h-4 w-4" />
                           <span>View</span>
+                        </Link>
+                        <a 
+                          href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 512 512">
+                            <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
+                          </svg>
+                          <span>For Better Experience</span>
                         </a>
                       </div>
                     </div>
@@ -600,11 +743,20 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
 
               {/* Content Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {filteredData.length > 0 ? (
-                  filteredData.map((item) => (
-                    <ResourceCard key={item.id} resource={item} />
-                  ))
-                ) : (
+                {(searchTerm ? filteredData : filteredData.slice(0, 6)).map((item) => (
+                  <ResourceCard key={item.id} resource={item} />
+                ))}
+                {!searchTerm && filteredData.length > 6 && (
+                  <div className="col-span-full flex justify-center mt-4">
+                    <button 
+                      onClick={() => router.push('/all-resources')}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+                    >
+                      View All Resources
+                    </button>
+                  </div>
+                )}
+                {filteredData.length === 0 && (
                   <div className="col-span-2 text-center py-8 bg-white rounded-lg shadow">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="h-12 w-12 text-gray-300 mb-4" />
@@ -619,7 +771,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
               <AdSenseBanner slot="bottom-banner-slot" format="horizontal" />
 
               {/* Pagination */}
-              {filteredData.length > 10 && (
+              {searchTerm && filteredData.length > 10 && (
                 <div className="flex justify-center mt-8">
                   <nav className="inline-flex rounded-md shadow-sm">
                     <button className="py-2 px-4 bg-white border border-gray-300 rounded-l-md text-sm font-medium text-gray-500 hover:bg-gray-50">
@@ -671,9 +823,11 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </Link>
                   ))}
                 </div>
-                <button className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2">
-                  View All Categories
-                </button>
+                {subjectCategories.length > 6 && (
+                  <Link href="/all-subjects" className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Categories
+                  </Link>
+                )}
               </div>
               
               {/* Stats Card */}
@@ -808,9 +962,10 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                 &copy; 2025 TaleemSpot. All rights reserved.
               </div>
               <div className="flex space-x-4">
-                <a href="/privacy-policy" className="hover:text-white">Privacy Policy</a>
-                <a href="/terms-of-service" className="hover:text-white">Terms of Service</a>
-                <a href="/cookie-policy" className="hover:text-white">Cookie Policy</a>
+                <Link href="/privacy-policy" className="hover:text-white">Privacy Policy</Link>
+                <Link href="/terms-of-service" className="hover:text-white">Terms of Service</Link>
+                <Link href="/cookie-policy" className="hover:text-white">Cookie Policy</Link>
+                <Link href="/sitemap" className="hover:text-white">Sitemap</Link>
               </div>
             </div>
           </div>
