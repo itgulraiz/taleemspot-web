@@ -14,7 +14,7 @@ const TaleemSpot = () => {
       subject: "Biology",
       class: "9th",
       url: "#",
-      thumbnail: "/drawables/biology-icon.png"
+      thumbnail: "/drawbles/logo.png" 
     },
     {
       id: 2,
@@ -23,7 +23,7 @@ const TaleemSpot = () => {
       subject: "Physics", 
       class: "9th",
       url: "#",
-      thumbnail: "/drawables/physics-icon.png"
+      thumbnail: "/drawbles/logo.png" 
     },
     {
       id: 3,
@@ -32,7 +32,7 @@ const TaleemSpot = () => {
       subject: "Chemistry",
       class: "9th", 
       url: "#",
-      thumbnail: "/drawables/chemistry-icon.png"
+      thumbnail: "/drawbles/logo.png" 
     }
   ];
 
@@ -42,25 +42,25 @@ const TaleemSpot = () => {
       id: 1,
       name: "Biology",
       count: 24,
-      icon: "/drawables/biology-icon.png"
+      icon: "/drawbles/logo.png" 
     },
     {
       id: 2,
       name: "Physics",
       count: 18,
-      icon: "/drawables/physics-icon.png"
+      icon: "/drawbles/logo.png" 
     },
     {
       id: 3,
       name: "Chemistry",
       count: 15,
-      icon: "/drawables/chemistry-icon.png"
+      icon: "/drawbles/logo.png" 
     },
     {
       id: 4,
       name: "Mathematics",
       count: 22,
-      icon: "/drawables/math-icon.png"
+      icon: "/drawbles/logo.png" 
     }
   ];
 
@@ -113,7 +113,7 @@ const TaleemSpot = () => {
             {/* Logo */}
             <div className="flex items-center space-x-2">
               <img 
-                src="/drawables/logo.png" 
+                src="/drawbles/logo.png" 
                 alt="TaleemSpot Logo" 
                 className="h-10 w-10"
                 onError={(e) => {
@@ -195,7 +195,7 @@ const TaleemSpot = () => {
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
               <div className="flex items-center space-x-2 mb-4">
                 <img 
-                  src="/drawables/logo.png" 
+                  src="/drawbles/logo.png" 
                   alt="Class Logo" 
                   className="h-12 w-12 rounded"
                   onError={(e) => {
@@ -318,7 +318,7 @@ const TaleemSpot = () => {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <img 
-                  src="/drawables/logo.png" 
+                  src="/drawbles/logo.png" 
                   alt="TaleemSpot Logo" 
                   className="h-8 w-8"
                   onError={(e) => {
