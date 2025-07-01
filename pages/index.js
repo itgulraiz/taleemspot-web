@@ -22,8 +22,9 @@ const TaleemSpot = () => {
       board: "Punjab",
       year: "2024",
       type: "Notes",
-      url: "#",
-      thumbnail: "/drawbles/logo.png" 
+      url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 2,
@@ -34,8 +35,9 @@ const TaleemSpot = () => {
       board: "Punjab",
       year: "2024",
       type: "Notes",
-      url: "#",
-      thumbnail: "/drawbles/logo.png" 
+      url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 3,
@@ -46,8 +48,9 @@ const TaleemSpot = () => {
       board: "Punjab", 
       year: "2024",
       type: "Notes",
-      url: "#",
-      thumbnail: "/drawbles/logo.png" 
+      url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 4,
@@ -58,8 +61,9 @@ const TaleemSpot = () => {
       board: "Federal",
       year: "2024",
       type: "Notes",
-      url: "#",
-      thumbnail: "/drawbles/logo.png" 
+      url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 5,
@@ -70,8 +74,9 @@ const TaleemSpot = () => {
       board: "Lahore",
       year: "2023",
       type: "Past Paper",
-      url: "#",
-      thumbnail: "/drawbles/logo.png" 
+      url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 6,
@@ -82,8 +87,9 @@ const TaleemSpot = () => {
       board: "Punjab",
       year: "2024",
       type: "Test Paper",
-      url: "#",
-      thumbnail: "/drawbles/logo.png" 
+      url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     }
   ];
 
@@ -132,37 +138,37 @@ const TaleemSpot = () => {
       id: 1,
       name: "Biology",
       count: 24,
-      icon: "/drawbles/logo.png" 
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 2,
       name: "Physics",
       count: 18,
-      icon: "/drawbles/logo.png" 
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 3,
       name: "Chemistry",
       count: 15,
-      icon: "/drawbles/logo.png" 
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 4,
       name: "Mathematics",
       count: 22,
-      icon: "/drawbles/logo.png" 
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 5,
       name: "English",
       count: 16,
-      icon: "/drawbles/logo.png" 
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     },
     {
       id: 6,
       name: "Urdu",
       count: 14,
-      icon: "/drawbles/logo.png" 
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
     }
   ];
 
@@ -308,22 +314,15 @@ const TaleemSpot = () => {
     }, []);
 
     return (
-      <div className="my-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-center">
-        <div className="text-red-600 font-bold text-lg mb-2">AdSense Banner Ads</div>
-        <div className="text-sm text-gray-600">
-          Ad Slot: {slot} | Format: {format}
-        </div>
-        <div className="mt-2 text-xs text-gray-500">
-          {/* Replace with actual AdSense code */}
-          <ins 
-            className="adsbygoogle"
-            style={{display: 'block'}}
-            data-ad-client="ca-pub-1926773803487692"
-            data-ad-slot="6001475521"
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
-        </div>
+      <div className="my-4">
+        <ins 
+          className="adsbygoogle"
+          style={{display: 'block'}}
+          data-ad-client="ca-pub-1926773803487692"
+          data-ad-slot={slot}
+          data-ad-format={format}
+          data-full-width-responsive="true"
+        />
       </div>
     );
   };
@@ -332,10 +331,28 @@ const TaleemSpot = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header with App Install Banner */}
       <div className="bg-gradient-to-r from-blue-900 via-purple-800 to-indigo-900 text-white py-3 px-4 flex justify-between items-center">
-        <span className="text-sm font-medium">Install TaleemSpot App From the Play Store</span>
-        <button className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          Install Our APP
-        </button>
+        <div className="flex items-center">
+          <span className="text-sm md:text-base font-medium flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2v-2a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
+            </svg>
+            <span className="hidden md:inline">Download</span> TaleemSpot App <span className="hidden md:inline">- Access Anywhere!</span>
+          </span>
+          <div className="hidden md:flex ml-2 items-center">
+            <span className="bg-yellow-500 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
+          </div>
+        </div>
+        <a 
+          href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
+          target="_blank"
+          rel="noopener noreferrer" 
+          className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 512 512">
+            <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
+          </svg>
+          Install App
+        </a>
       </div>
 
       {/* Navigation */}
@@ -345,7 +362,7 @@ const TaleemSpot = () => {
             {/* Logo */}
             <div className="flex items-center space-x-3">
               <img 
-                src="/drawbles/logo.png" 
+                src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
                 alt="TaleemSpot Logo" 
                 className="h-12 w-12 rounded-full"
                 onError={(e) => {
