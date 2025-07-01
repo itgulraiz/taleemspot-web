@@ -1,208 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Menu, X, Download, BookOpen, Users, ChevronDown, ExternalLink, Home as HomeIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 
-// Card Detail Component (will be used in a separate route)
-export const ResourceDetail = ({ match }) => {
-  const [resource, setResource] = useState(null);
-  const [relatedResources, setRelatedResources] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // In a real app, you would fetch the specific resource by ID
-    // For demo, we'll use static data
-    const id = parseInt(match?.params?.id) || 1;
-    
-    // Simulate API fetch
-    setTimeout(() => {
-      const foundResource = staticData.find(item => item.id === id) || staticData[0];
-      setResource(foundResource);
-      
-      // Get related resources of same subject
-      const related = staticData
-        .filter(item => item.subject === foundResource.subject && item.id !== foundResource.id)
-        .slice(0, 4);
-      setRelatedResources(related);
-      setLoading(false);
-    }, 500);
-  }, [match?.params?.id]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse flex space-x-4">
-          <div className="rounded-full bg-green-400 h-12 w-12"></div>
-          <div className="flex-1 space-y-4 py-1">
-            <div className="h-4 bg-green-400 rounded w-3/4"></div>
-            <div className="space-y-2">
-              <div className="h-4 bg-green-400 rounded"></div>
-              <div className="h-4 bg-green-400 rounded w-5/6"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!resource) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50">Resource not found</div>;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
-                <BookOpen className="h-6 w-6 text-green-600" />
-              </div>
-              <span className="text-xl font-bold text-green-600">TaleemSpot</span>
-            </Link>
-            <a 
-              href="/"
-              className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-            >
-              <HomeIcon className="h-4 w-4" />
-              <span>Back to Home</span>
-            </a>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          {/* Resource Header */}
-          <div className="border-b pb-6 mb-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="h-8 w-8 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">{resource.title}</h1>
-                <p className="text-gray-600">
-                  {resource.subject} • {resource.class} Class
-                </p>
-              </div>
-            </div>
-            <p className="text-lg text-gray-700 mt-4">{resource.description}</p>
-          </div>
-
-          {/* Google Drive Embed */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Preview Document</h2>
-            <div className="rounded-lg overflow-hidden border border-gray-300 shadow-sm">
-              <iframe 
-                src="https://drive.google.com/file/d/1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e/preview" 
-                width="100%" 
-                height="600" 
-                allow="autoplay"
-                className="w-full"
-              ></iframe>
-            </div>
-          </div>
-
-          {/* Download Button */}
-          <div className="mb-8">
-            <a 
-              href={resource.url || "#"} 
-              download
-              className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 w-full sm:w-auto"
-            >
-              <Download className="h-5 w-5" />
-              <span>Download PDF</span>
-            </a>
-          </div>
-
-          {/* Related Resources */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Related Resources</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {relatedResources.map(item => (
-                <a 
-                  key={item.id} 
-                  href={`/resource/${item.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow p-4"
-                >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-green-600" />
-                    </div>
-                    <h3 className="font-medium text-gray-800 text-sm line-clamp-2">{item.title}</h3>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {item.subject} • {item.class} Class
-                  </p>
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-              <BookOpen className="h-4 w-4 text-green-600" />
-            </div>
-            <span className="text-lg font-bold">TaleemSpot</span>
-          </div>
-          <p className="text-gray-400 text-sm">
-            &copy; 2025 TaleemSpot. All rights reserved.
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
-};
-
-// ResourceCard Component
-const ResourceCard = ({ resource }) => {
-  return (
-    <a 
-      href={`/resource/${resource.id}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-    >
-      <div className="p-4">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-            <BookOpen className="h-6 w-6 text-green-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">
-              {resource.title}
-            </h3>
-            <p className="text-xs text-gray-600 mt-1">
-              {resource.subject} • {resource.class} Class
-            </p>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-          {resource.description}
-        </p>
-        <div className="flex items-center justify-between mt-2">
-          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-            {resource.type || "Notes"}
-          </span>
-          <div className="flex items-center text-blue-600 text-xs">
-            <ExternalLink className="h-3 w-3 mr-1" />
-            <span>Open</span>
-          </div>
-        </div>
-      </div>
-    </a>
-  );
-};
-
-// Main App Component
 const TaleemSpot = () => {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
   const [searchTerm, setSearchTerm] = useState('');
@@ -453,6 +255,46 @@ const TaleemSpot = () => {
     };
   }, []);
 
+  // ResourceCard Component
+  const ResourceCard = ({ resource }) => {
+    return (
+      <a 
+        href={`/resource/${resource.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+      >
+        <div className="p-4">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <BookOpen className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">
+                {resource.title}
+              </h3>
+              <p className="text-xs text-gray-600 mt-1">
+                {resource.subject} • {resource.class} Class
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+            {resource.description}
+          </p>
+          <div className="flex items-center justify-between mt-2">
+            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+              {resource.type || "Notes"}
+            </span>
+            <div className="flex items-center text-blue-600 text-xs">
+              <ExternalLink className="h-3 w-3 mr-1" />
+              <span>Open</span>
+            </div>
+          </div>
+        </div>
+      </a>
+    );
+  };
+
   // AdSense Banner Component
   const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
     useEffect(() => {
@@ -576,13 +418,13 @@ const TaleemSpot = () => {
                 {menu.dropdownItems.length > 0 && openDropdown === menu.name && (
                   <div className="absolute top-full left-0 bg-white text-gray-800 shadow-lg rounded-b-lg min-w-[200px] z-50">
                     {menu.dropdownItems.map((item) => (
-                      <a
+                      <Link
                         key={item.name}
                         href={item.path}
                         className="block px-4 py-3 hover:bg-gray-100 border-b border-gray-100 last:border-0"
                       >
                         {item.name}
-                      </a>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -607,13 +449,13 @@ const TaleemSpot = () => {
                 {menu.dropdownItems.length > 0 && openDropdown === menu.name && (
                   <div className="bg-green-800">
                     {menu.dropdownItems.map((item) => (
-                      <a
+                      <Link
                         key={item.name}
                         href={item.path}
                         className="block px-8 py-2 hover:bg-green-700 border-b border-green-700 last:border-0"
                       >
                         {item.name}
-                      </a>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -736,7 +578,7 @@ const TaleemSpot = () => {
                     </div>
                   </div>
                   <div className="mt-3 md:mt-0">
-                    <a 
+                    <Link 
                       href="/resource/featured"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -744,7 +586,7 @@ const TaleemSpot = () => {
                     >
                       <ExternalLink className="h-4 w-4" />
                       <span>View</span>
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
