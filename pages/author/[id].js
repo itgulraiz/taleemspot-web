@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
-import { FaGraduationCap, FaMapMarkerAlt, FaRegFilePdf, FaFileAlt, FaVideo } from 'react-icons/fa';
-import { HiOutlineDocumentText, HiOutlineHeart, HiHeart } from 'react-icons/hi';
+import { FaGraduationCap, FaMapMarkerAlt, FaRegFilePdf, FaFileAlt, FaVideo, FaUserPlus, FaUserCheck } from 'react-icons/fa';
+import { HiOutlineDocumentText } from 'react-icons/hi';
 import Link from 'next/link';
 
 const AuthorProfile = () => {
@@ -38,7 +38,8 @@ const AuthorProfile = () => {
 
   const fetchAuthorData = async () => {
     try {
-      const authorDoc = await getDoc(doc(db, 'users', id));
+      // FIXED: Use "Authors" collection instead of "users"
+      const authorDoc = await getDoc(doc(db, 'Authors', id));
       
       if (authorDoc.exists()) {
         setAuthor({
@@ -92,11 +93,11 @@ const AuthorProfile = () => {
     setLoadingFollow(true);
 
     try {
-      // Update current user's following list
-      const currentUserRef = doc(db, 'users', currentUser.uid);
+      // Update current user's following list in the Authors collection
+      const currentUserRef = doc(db, 'Authors', currentUser.uid);
       
       // Update author's followers list
-      const authorRef = doc(db, 'users', id);
+      const authorRef = doc(db, 'Authors', id);
       
       if (following) {
         // Unfollow
@@ -136,12 +137,12 @@ const AuthorProfile = () => {
   };
 
   const getFileTypeIcon = (fileType) => {
-    switch (fileType) {
-      case 'PDF':
+    switch (fileType?.toLowerCase()) {
+      case 'pdf':
         return <FaRegFilePdf className="h-8 w-8 text-red-500" />;
-      case 'Document':
+      case 'document':
         return <FaFileAlt className="h-8 w-8 text-blue-500" />;
-      case 'Lecture':
+      case 'lecture':
         return <FaVideo className="h-8 w-8 text-purple-500" />;
       default:
         return <HiOutlineDocumentText className="h-8 w-8 text-gray-500" />;
@@ -188,18 +189,51 @@ const AuthorProfile = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center p-6 bg-white rounded-lg shadow-lg max-w-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-2">Error</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="flex justify-center space-x-4">
+            <button 
+              onClick={() => router.push('/authors')} 
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Back to Authors
+            </button>
+            <button 
+              onClick={() => router.push('/')} 
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              Go Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!author) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800">Author not found</h1>
           <p className="text-gray-600 mt-2">The author profile you're looking for doesn't exist.</p>
-          <button 
-            onClick={() => router.push('/')} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Go Home
-          </button>
+          <div className="mt-6 flex justify-center space-x-4">
+            <button 
+              onClick={() => router.push('/authors')} 
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Back to Authors
+            </button>
+            <button 
+              onClick={() => router.push('/')} 
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              Go Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -224,16 +258,16 @@ const AuthorProfile = () => {
                 <h1 className="text-xl md:text-2xl font-bold hidden sm:block">TaleemSpot</h1>
               </button>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
               <button 
                 onClick={() => router.push('/authors')}
-                className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md mr-2"
+                className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md text-sm"
               >
                 Back to Authors
               </button>
               <button 
                 onClick={() => router.push('/')}
-                className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md"
+                className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md text-sm"
               >
                 Home
               </button>
@@ -297,7 +331,7 @@ const AuthorProfile = () => {
                   <button
                     onClick={handleFollow}
                     disabled={loadingFollow}
-                    className={`flex items-center space-x-1 px-6 py-2 rounded-md font-medium ${
+                    className={`flex items-center space-x-2 px-6 py-2 rounded-md font-medium transition-colors ${
                       following 
                         ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
                         : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -305,12 +339,12 @@ const AuthorProfile = () => {
                   >
                     {following ? (
                       <>
-                        <HiHeart className="h-5 w-5 text-red-500" />
+                        <FaUserCheck className="h-5 w-5" />
                         <span>{loadingFollow ? 'Processing...' : 'Following'}</span>
                       </>
                     ) : (
                       <>
-                        <HiOutlineHeart className="h-5 w-5" />
+                        <FaUserPlus className="h-5 w-5" />
                         <span>{loadingFollow ? 'Processing...' : 'Follow'}</span>
                       </>
                     )}
@@ -326,20 +360,16 @@ const AuthorProfile = () => {
                 <div className="text-sm text-gray-500">Uploads</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{author.following ? author.following.length : 0}</div>
+                <div className="text-xl font-bold text-gray-900">{author.following?.length || 0}</div>
                 <div className="text-sm text-gray-500">Following</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{author.followers ? author.followers.length : 0}</div>
+                <div className="text-xl font-bold text-gray-900">{author.followers?.length || 0}</div>
                 <div className="text-sm text-gray-500">Followers</div>
               </div>
               <div className="text-center">
                 <div className="text-xl font-bold text-gray-900">{authorFiles.reduce((total, file) => total + (file.views || 0), 0)}</div>
                 <div className="text-sm text-gray-500">Views</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">4.5</div>
-                <div className="text-sm text-gray-500">Rating</div>
               </div>
             </div>
 
@@ -420,6 +450,15 @@ const AuthorProfile = () => {
           </div>
         </div>
       </footer>
+
+      <style jsx>{`
+        .line-clamp-1 {
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 1;
+        }
+      `}</style>
     </div>
   );
 };
