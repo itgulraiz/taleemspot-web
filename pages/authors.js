@@ -12,6 +12,7 @@ const Authors = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterProvince, setFilterProvince] = useState('');
+  const [error, setError] = useState(null);
   
   useEffect(() => {
     fetchAuthors();
@@ -19,8 +20,15 @@ const Authors = () => {
   
   const fetchAuthors = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      const querySnapshot = await getDocs(collection(db, 'users'));
+      console.log("Fetching authors from 'Authors' collection...");
+      
+      // FIXED: Using "Authors" (with capital A) instead of "users"
+      const querySnapshot = await getDocs(collection(db, 'Authors'));
+      
+      console.log("Query returned:", querySnapshot.size, "documents");
       const authorsList = [];
       
       querySnapshot.forEach((doc) => {
@@ -43,6 +51,7 @@ const Authors = () => {
       setAuthors(authorsList);
     } catch (error) {
       console.error('Error fetching authors:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -50,18 +59,17 @@ const Authors = () => {
   
   // Filter authors based on search term and filters
   const filteredAuthors = authors.filter(author => {
+    // First check: If all filters are empty, show everyone
+    if (searchTerm === '' && filterRole === '' && filterProvince === '') {
+      return true;
+    }
+    
     const matchesSearch = searchTerm === '' || 
       author.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      author.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (author.education && author.education.toLowerCase().includes(searchTerm.toLowerCase()));
+      author.username.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesRole = filterRole === '' || author.role === filterRole;
     const matchesProvince = filterProvince === '' || author.province === filterProvince;
-    
-    // Exclude specific users if needed
-    if (author.id === 'itgulraizeducation') {
-      return false;
-    }
     
     return matchesSearch && matchesRole && matchesProvince;
   });
@@ -112,6 +120,19 @@ const Authors = () => {
           <div className="p-6">
             <h1 className="text-2xl font-bold text-gray-800 mb-6">Authors & Contributors</h1>
             
+            {/* Debug Info */}
+            {error && (
+              <div className="bg-red-50 p-4 rounded mb-4">
+                <p className="text-red-600">Error: {error}</p>
+                <button 
+                  onClick={fetchAuthors}
+                  className="mt-2 px-4 py-1 bg-blue-600 text-white text-sm rounded"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            
             {/* Search and Filters */}
             <div className="mb-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -156,6 +177,11 @@ const Authors = () => {
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
+            ) : authors.length === 0 ? (
+              <div className="bg-yellow-50 p-8 rounded-lg text-center">
+                <h3 className="text-lg font-medium text-yellow-800 mb-1">No authors in database</h3>
+                <p className="text-yellow-700">The Authors collection may be empty or not accessible</p>
+              </div>
             ) : filteredAuthors.length === 0 ? (
               <div className="bg-gray-50 p-8 rounded-lg text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-1">No authors found</h3>
@@ -167,9 +193,8 @@ const Authors = () => {
                   <Link 
                     href={`/author/${author.id}`} 
                     key={author.id}
-                    legacyBehavior
                   >
-                    <a className="block border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
                       <div className="p-6">
                         <div className="flex items-start space-x-4">
                           {author.photoURL ? (
@@ -226,7 +251,7 @@ const Authors = () => {
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </div>
                   </Link>
                 ))}
               </div>
