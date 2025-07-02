@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { FaGraduationCap, FaMapMarkerAlt, FaSearch } from 'react-icons/fa';
 
@@ -20,34 +20,26 @@ const Authors = () => {
   const fetchAuthors = async () => {
     setLoading(true);
     try {
-      // Query users who have at least one uploaded file (teachers/contributors)
-      // You can adjust this query based on your needs
-      const q = query(
-        collection(db, 'users'),
-        // Optional: where('role', '==', 'Teacher'), // If you want only teachers
-        orderBy('fullName'),
-        limit(100) // Limit for performance
-      );
-      
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(collection(db, 'users'));
       const authorsList = [];
       
       querySnapshot.forEach((doc) => {
         const userData = doc.data();
         authorsList.push({
           id: doc.id,
-          fullName: userData.fullName,
-          username: userData.username,
-          photoURL: userData.photoURL,
-          role: userData.role,
-          province: userData.province,
-          education: userData.education,
-          bio: userData.bio,
+          fullName: userData.fullName || 'Unknown User',
+          username: userData.username || doc.id.slice(0, 5),
+          photoURL: userData.photoURL || null,
+          role: userData.role || 'User',
+          province: userData.province || '',
+          education: userData.education || '',
+          bio: userData.bio || '',
           followers: userData.followers?.length || 0,
           uploads: userData.uploads || 0
         });
       });
       
+      console.log("Authors found:", authorsList.length);
       setAuthors(authorsList);
     } catch (error) {
       console.error('Error fetching authors:', error);
@@ -65,6 +57,11 @@ const Authors = () => {
     
     const matchesRole = filterRole === '' || author.role === filterRole;
     const matchesProvince = filterProvince === '' || author.province === filterProvince;
+    
+    // Exclude specific users if needed
+    if (author.id === 'itgulraizeducation') {
+      return false;
+    }
     
     return matchesSearch && matchesRole && matchesProvince;
   });
@@ -170,8 +167,9 @@ const Authors = () => {
                   <Link 
                     href={`/author/${author.id}`} 
                     key={author.id}
+                    legacyBehavior
                   >
-                    <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+                    <a className="block border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
                       <div className="p-6">
                         <div className="flex items-start space-x-4">
                           {author.photoURL ? (
@@ -196,6 +194,7 @@ const Authors = () => {
                               )}
                             </div>
                             <p className="text-sm text-gray-600">@{author.username}</p>
+                            <p className="text-xs text-gray-500">UID: {author.id}</p>
                             
                             <div className="mt-2 flex flex-wrap gap-2">
                               {author.education && (
@@ -227,7 +226,7 @@ const Authors = () => {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </a>
                   </Link>
                 ))}
               </div>
