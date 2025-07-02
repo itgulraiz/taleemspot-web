@@ -250,7 +250,7 @@ const Profile = () => {
       // Upload file to Firebase Storage
       const fileExtension = fileUpload.name.split('.').pop();
       const storageRef = ref(storage, `user_files/${currentUser.uid}/${fileType.toLowerCase()}/${Date.now()}_${fileTitle.replace(/\s+/g, '_')}.${fileExtension}`);
-      const uploadTask = uploadBytesResumable(storageRef, fileUpload);
+      const uploadTask = uploadBytesResumable(storageRef, file);
       
       uploadTask.on('state_changed',
         (snapshot) => {
@@ -462,7 +462,11 @@ const Profile = () => {
                 onClick={() => router.push('/')} 
                 className="flex items-center space-x-2"
               >
-                <img src="/logo.png" alt="TaleemSpot Logo" className="h-8 w-auto" />
+                <img 
+                  src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+                  alt="TaleemSpot Logo" 
+                  className="h-8 w-auto rounded-full"
+                />
                 <h1 className="text-xl md:text-2xl font-bold hidden sm:block">TaleemSpot</h1>
               </button>
             </div>
@@ -526,9 +530,9 @@ const Profile = () => {
           <div className="relative h-32 bg-gradient-to-r from-blue-500 to-indigo-500">
             <div className="absolute bottom-0 left-0 transform translate-y-1/2 ml-6 md:ml-10">
               <div className="relative">
-                {userProfile.photoURL ? (
+                {userProfile.photoURL || (currentUser && currentUser.photoURL) ? (
                   <img
-                    src={userProfile.photoURL}
+                    src={userProfile.photoURL || currentUser.photoURL}
                     alt={userProfile.fullName}
                     className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
                   />
@@ -1009,7 +1013,7 @@ const Profile = () => {
                       onClick={() => setFileViewMode('grid')}
                       className={`p-1.5 rounded ${fileViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
                     >
-                      <FiGrid className="h-5 w-5" />
+                                           <FiGrid className="h-5 w-5" />
                     </button>
                     <button 
                       onClick={() => setFileViewMode('list')}
@@ -1120,7 +1124,7 @@ const Profile = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(file.createdAt)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <a 
                               href={file.fileUrl} 
                               target="_blank" 
