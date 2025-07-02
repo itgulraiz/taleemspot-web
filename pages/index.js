@@ -766,7 +766,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
 {/* Featured text content with centered button */}
 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
   <div className="flex flex-col gap-4">
-    <p className="text-gray-700 dark:text-gray-300">
+    <p className="text-gray-700 dark:text-black">
       Share your notes, past papers, and study materials with thousands of students and teachers across the country.
       Access your content anytime, anywhere — all in one place. Make learning easier. Make teaching smarter.
       Download the Taleem Spot app now on the Play Store!
@@ -1010,7 +1010,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
 {/* Featured text content with centered button */}
 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
   <div className="flex flex-col gap-4">
-    <p className="text-gray-700 dark:text-gray-300">
+    <p className="text-gray-700 dark:text-black">
       Share your notes, past papers, and study materials with thousands of students and teachers across the country.
       Access your content anytime, anywhere — all in one place. Make learning easier. Make teaching smarter.
       Download the Taleem Spot app now on the Play Store!
