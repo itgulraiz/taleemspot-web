@@ -764,7 +764,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                 </h2>
                 
 {/* Featured text content with centered button */}
-<div className="bg-gradient-to-r from-green-50 to-blue-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
+<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
   <div className="flex flex-col gap-4">
     <p className="text-gray-700 dark:text-gray-300">
       Share your notes, past papers, and study materials with thousands of students and teachers across the country.
@@ -1008,7 +1008,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                 </h2>
                 
 {/* Featured text content with centered button */}
-<div className="bg-gradient-to-r from-green-50 to-blue-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
+<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
   <div className="flex flex-col gap-4">
     <p className="text-gray-700 dark:text-gray-300">
       Share your notes, past papers, and study materials with thousands of students and teachers across the country.
