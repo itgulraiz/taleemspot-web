@@ -338,7 +338,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
         <ins 
           className="adsbygoogle"
           style={{display: 'block'}}
-          data-ad-client="ca-pub-1926773803487692"
+          data-ad-client="ca-pub-xxxxxxxxxxxxxxxx"
           data-ad-slot={slot}
           data-ad-format={format}
           data-full-width-responsive="true"
