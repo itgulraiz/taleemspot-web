@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { Search, Menu, X, Download, BookOpen, Users, ChevronDown, ExternalLink, Home as HomeIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -7,6 +7,17 @@ import { db } from '../firebaseConfig';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
 import Image from 'next/image';
+
+// Helper function to extract Drive ID from URL
+function extractDriveId(url) {
+  try {
+    const regex = /\/d\/([a-zA-Z0-9_-]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  } catch (error) {
+    return null;
+  }
+}
 
 export async function getStaticProps() {
   try {
@@ -136,16 +147,114 @@ export async function getStaticProps() {
   }
 }
 
-// Helper function to extract Drive ID from URL
-function extractDriveId(url) {
-  try {
-    const regex = /\/d\/([a-zA-Z0-9_-]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-  } catch (error) {
-    return null;
-  }
-}
+// Memoized ResourceCard Component for optimized rendering
+const ResourceCard = memo(({ resource }) => {
+  return (
+    <a 
+      href={resource.path}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+    >
+      <div className="p-4">
+        <div className="flex items-center space-x-3 mb-3">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+            <BookOpen className="h-6 w-6 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-gray-200 text-sm leading-tight line-clamp-2">
+              {resource.title}
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              {resource.subject} • {resource.class} {resource.class.includes('ECAT') || resource.class.includes('MDCAT') ? '' : 'Class'}
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+          {resource.description}
+        </p>
+        <div className="flex items-center justify-between mt-2">
+          <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded">
+            {resource.year}
+          </span>
+          <div className="flex items-center text-blue-600 dark:text-blue-400 text-xs">
+            <ExternalLink className="h-3 w-3 mr-1" />
+            <span>Open</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+});
+
+ResourceCard.displayName = 'ResourceCard';
+
+// Optimized AdSense Banner Component with lazy loading
+const AdSenseBanner = memo(({ slot = "1234567890", format = "auto" }) => {
+  const adRef = useRef(null);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          try {
+            if (typeof window !== 'undefined' && window.adsbygoogle) {
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            }
+          } catch (err) {
+            console.log("AdSense error:", err);
+          }
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    
+    if (adRef.current) {
+      observer.observe(adRef.current);
+    }
+    
+    return () => {
+      if (adRef.current) {
+        observer.disconnect();
+      }
+    };
+  }, []);
+
+  return (
+    <div className="my-4" ref={adRef}>
+      <ins 
+        className="adsbygoogle"
+        style={{display: 'block'}}
+        data-ad-client="ca-pub-1926773803487692"
+        data-ad-slot={slot}
+        data-ad-format={format}
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
+});
+
+AdSenseBanner.displayName = 'AdSenseBanner';
+
+// Mobile Top Auth Links component
+const MobileTopAuthLinks = memo(({ router }) => {
+  return (
+    <div className="flex items-center space-x-2">
+      <Link href="/login" className="text-xs font-medium text-blue-700 dark:text-blue-400">
+        Login
+      </Link>
+      <Link href="/register" className="text-xs font-medium text-green-700 dark:text-green-400">
+        Register
+      </Link>
+      <Link href="/authors" className="text-xs font-medium text-purple-700 dark:text-purple-400">
+        Authors
+      </Link>
+    </div>
+  );
+});
+
+MobileTopAuthLinks.displayName = 'MobileTopAuthLinks';
 
 const TaleemSpot = ({ resources, allResources, classCategories, boardCategories, subjectCategories }) => {
   const router = useRouter();
@@ -162,8 +271,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
   // Reference to the menu dropdown
   const dropdownRef = useRef(null);
 
-  // Navigation menu structure with dropdowns
-  const navMenus = [
+  // Navigation menu structure with dropdowns - memoized to prevent unnecessary recreations
+  const navMenus = useMemo(() => [
     { 
       name: 'Home',
       path: '/',
@@ -193,7 +302,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
         path: `/board/${board.name.replace(' Board', '')}`
       }))
     }
-  ];
+  ], [classCategories, subjectCategories, boardCategories]);
 
   // Handle search functionality with optimization
   useEffect(() => {
@@ -314,51 +423,51 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
 
   // Check for saved theme preference
   useEffect(() => {
+    // Preload critical resources
+    if (typeof window !== 'undefined') {
+      // Preload fonts
+      const fontLinks = document.querySelectorAll('link[rel="preload"][as="font"]');
+      if (fontLinks.length === 0) {
+        const fontPreload = document.createElement('link');
+        fontPreload.rel = 'preload';
+        fontPreload.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+        fontPreload.as = 'style';
+        document.head.appendChild(fontPreload);
+      }
+    }
+
     const savedTheme = localStorage.getItem('theme') || 'light';
     setTheme(savedTheme);
     document.documentElement.classList.toggle('dark', savedTheme === 'dark');
   }, []);
 
-  // ResourceCard Component with optimized rendering
-  const ResourceCard = ({ resource }) => {
-    return (
-      <a 
-        href={resource.path}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-      >
-        <div className="p-4">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-              <BookOpen className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800 dark:text-gray-200 text-sm leading-tight line-clamp-2">
-                {resource.title}
-              </h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {resource.subject} • {resource.class} {resource.class.includes('ECAT') || resource.class.includes('MDCAT') ? '' : 'Class'}
-              </p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-            {resource.description}
-          </p>
-          <div className="flex items-center justify-between mt-2">
-            <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded">
-              {resource.year}
-            </span>
-            <div className="flex items-center text-blue-600 dark:text-blue-400 text-xs">
-              <ExternalLink className="h-3 w-3 mr-1" />
-              <span>Open</span>
-            </div>
-          </div>
+  // Memoize featured content for better performance
+  const featuredContent = useMemo(() => (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
+      <div className="flex flex-col gap-4">
+        <p className="text-gray-700 dark:text-black">
+          Share your notes, past papers, and study materials with thousands of students and teachers across the country.
+          Access your content anytime, anywhere — all in one place. Make learning easier. Make teaching smarter.
+          Download the Taleem Spot app now on the Play Store!
+        </p>
+        <div className="mt-3 flex justify-center">
+          <a 
+            href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 512 512">
+              <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
+            </svg>
+            <span>Get it on Play Store</span>
+          </a>
         </div>
-      </a>
-    );
-  };
-    return (
+      </div>
+    </div>
+  ), []);
+
+  return (
     <>
       <Head>
         <title>TaleemSpot - Pakistan&apos;s #1 Education Resource Platform</title>
@@ -371,10 +480,12 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="canonical" href="https://taleemspot.com" />
         {/* Preload important assets */}
-        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
 
         {/* Header with App Install Banner */}
         <div className="bg-gradient-to-r from-blue-900 via-purple-800 to-indigo-900 text-white py-3 px-4 flex justify-between items-center">
@@ -515,29 +626,42 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
               </div>
             </div>
             
-            {/* Mobile Header */}
-            <div className="flex md:hidden justify-between items-center py-3">
-              {/* Search Button */}
-              <button 
-                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <Search className="h-6 w-6 dark:text-white" />
-              </button>
-              
-              {/* Logo */}
-              <Link href="/" className="text-center">
-                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                  TaleemSpot
-                </span>
-              </Link>
-              
-              {/* Auth and Menu Buttons */}
-              <div className="flex items-center">
+            {/* Mobile Header - Improved with auth links on top */}
+            <div className="md:hidden py-3">
+              {/* Auth links & Search top row */}
+              <div className="flex items-center justify-between mb-2">
+                {/* Search Button */}
+                <button 
+                  onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Search className="h-5 w-5 dark:text-white" />
+                </button>
+                
+                {/* Mobile Auth Links */}
+                {currentUser ? (
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => router.push('/profile')}
+                      className="p-1 mr-1 text-xs text-blue-600 dark:text-blue-400 font-medium"
+                    >
+                      My Profile
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="p-1 text-xs text-red-600 dark:text-red-400 font-medium"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <MobileTopAuthLinks router={router} />
+                )}
+                
                 {/* Theme toggle */}
                 <button 
                   onClick={toggleTheme}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 mr-1"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   aria-label="Toggle dark mode"
                 >
                   {theme === 'light' ? (
@@ -550,32 +674,28 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </svg>
                   )}
                 </button>
-                
-                {/* Mobile auth buttons */}
-                <div className="flex">
-                  {currentUser ? (
-                    <button
-                      onClick={() => router.push('/profile')}
-                      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 mr-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <>
-                      <Link href="/login" className="text-xs font-medium text-blue-700 dark:text-blue-400 mr-2">
-                        Login
-                      </Link>
-                      <Link href="/register" className="text-xs font-medium text-green-700 dark:text-green-400 mr-2">
-                        Register
-                      </Link>
-                      <Link href="/authors" className="text-xs font-medium text-purple-700 dark:text-purple-400 mr-2">
-                        Authors
-                      </Link>
-                    </>
-                  )}
-                </div>
+              </div>
+              
+              {/* Logo & Menu button row */}
+              <div className="flex justify-between items-center">
+                {/* Logo */}
+                <Link href="/" className="flex items-center space-x-2">
+                  <img 
+                    src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+                    alt="TaleemSpot" 
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-full"
+                    loading="eager"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2316a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>';
+                    }}
+                  />
+                  <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                    TaleemSpot
+                  </span>
+                </Link>
                 
                 {/* Menu Button */}
                 <button 
@@ -590,7 +710,7 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
               </div>
             </div>
 
-            {/* Mobile Search Overlay */}
+            {/* Mobile Search Overlay with instant results */}
             {mobileSearchOpen && (
               <div className="md:hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex flex-col">
                 <div className="bg-white dark:bg-gray-800 p-4">
@@ -630,6 +750,26 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                       ))}
                     </div>
                   )}
+                  
+                  {/* Quick search results */}
+                  {searchTerm && filteredData.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Search Results:</h4>
+                      <div className="max-h-96 overflow-y-auto">
+                        {filteredData.slice(0, 5).map(item => (
+                          <a 
+                            key={item.id} 
+                            href={item.path} 
+                            className="block p-3 mb-2 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                            onClick={() => setMobileSearchOpen(false)}
+                          >
+                            <h5 className="text-sm font-medium text-gray-800 dark:text-white">{item.title}</h5>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.subject} • {item.board}</p>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -664,6 +804,14 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                           {item.name}
                         </Link>
                       ))}
+                      <Link 
+                        href={menu.name === 'Past Papers' ? "/all-classes" : 
+                              menu.name === 'Subjects' ? "/all-subjects" : 
+                              menu.name === 'Boards' ? "/all-boards" : "#"}
+                        className="block px-4 py-3 text-green-600 dark:text-green-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-700 border-t border-gray-200 dark:border-gray-600"
+                      >
+                        View All {menu.name}
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -717,6 +865,14 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                           {item.name}
                         </Link>
                       ))}
+                      <Link 
+                        href={menu.name === 'Past Papers' ? "/all-classes" : 
+                              menu.name === 'Subjects' ? "/all-subjects" : 
+                              menu.name === 'Boards' ? "/all-boards" : "#"}
+                        className="block px-8 py-2 text-white font-medium bg-green-700 dark:bg-green-800"
+                      >
+                        View All {menu.name}
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -763,30 +919,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                   Featured Resources
                 </h2>
                 
-{/* Featured text content with centered button */}
-<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
-  <div className="flex flex-col gap-4">
-    <p className="text-gray-700 dark:text-black">
-      Share your notes, past papers, and study materials with thousands of students and teachers across the country.
-      Access your content anytime, anywhere — all in one place. Make learning easier. Make teaching smarter.
-      Download the Taleem Spot app now on the Play Store!
-    </p>
-    {/* Center the button with flex justify-center */}
-    <div className="mt-3 flex justify-center">
-      <a 
-        href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 512 512">
-          <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
-        </svg>
-        <span>Get it on Play Store</span>
-      </a>
-    </div>
-  </div>
-</div>
+                {/* Featured text content with centered button */}
+                {featuredContent}
 
                 {/* Featured Card - Select resources */}
                 {resources.length > 0 && (
@@ -794,6 +928,15 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     {resources.slice(0, 4).map((resource) => (
                       <ResourceCard key={resource.id} resource={resource} />
                     ))}
+                  </div>
+                )}
+                
+                {/* View All button for mobile */}
+                {resources.length > 4 && (
+                  <div className="mt-4 text-center">
+                    <Link href="/all-resources" className="inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
+                      View All Resources
+                    </Link>
                   </div>
                 )}
               </div>
@@ -820,6 +963,12 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </Link>
                   ))}
                 </div>
+                {/* View All Boards - Mobile */}
+                {boardCategories.length > 4 && (
+                  <Link href="/all-boards" className="mt-3 w-full text-center text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 py-2 block">
+                    View All Boards
+                  </Link>
+                )}
               </div>
               
               {/* Class Categories - Mobile */}
@@ -844,9 +993,16 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </Link>
                   ))}
                 </div>
+                {/* View All Classes - Mobile */}
+                {classCategories.length > 6 && (
+                  <Link href="/all-classes" className="mt-3 w-full text-center text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 py-2 block">
+                    View All Classes
+                  </Link>
+                )}
               </div>
               
-
+              {/* Top AdSense Banner - Mobile */}
+              <AdSenseBanner slot="mobile-banner-slot" format="horizontal" />
               
               {/* Subject Categories - Mobile */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
@@ -870,6 +1026,12 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                     </Link>
                   ))}
                 </div>
+                {/* View All Subjects - Mobile */}
+                {subjectCategories.length > 6 && (
+                  <Link href="/all-subjects" className="mt-3 w-full text-center text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 py-2 block">
+                    View All Subjects
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -996,7 +1158,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
 
             {/* Main Content Area - Desktop */}
             <div className="hidden lg:block lg:col-span-2">
-
+              {/* Top AdSense Banner - Lazy loaded */}
+              <AdSenseBanner slot="top-banner-slot" format="horizontal" />
 
               {/* Featured Section */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
@@ -1007,32 +1170,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                   Featured Resources
                 </h2>
                 
-{/* Featured text content with centered button */}
-<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
-  <div className="flex flex-col gap-4">
-    <p className="text-gray-700 dark:text-black">
-      Share your notes, past papers, and study materials with thousands of students and teachers across the country.
-      Access your content anytime, anywhere — all in one place. Make learning easier. Make teaching smarter.
-      Download the Taleem Spot app now on the Play Store!
-    </p>
-    {/* Center the button with flex justify-center */}
-    <div className="mt-3 flex justify-center">
-      <a 
-        href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 512 512">
-          <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
-        </svg>
-        <span>Get it on Play Store</span>
-      </a>
-    </div>
-  </div>
-</div>
-                
-
+                {/* Featured text content with centered button - Using memoized component */}
+                {featuredContent}
               </div>
 
               {/* Search Results Label */}
@@ -1069,7 +1208,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                 )}
               </div>
 
-
+              {/* Bottom AdSense Banner - Lazy loaded */}
+              <AdSenseBanner slot="bottom-banner-slot" format="horizontal" />
 
               {/* Pagination */}
               {searchTerm && filteredData.length > 10 && (
@@ -1157,7 +1297,8 @@ const TaleemSpot = ({ resources, allResources, classCategories, boardCategories,
                 </div>
               </div>
 
-
+              {/* AdSense Banner - Lazy loaded */}
+              <AdSenseBanner slot="sidebar-banner-slot" format="vertical" />
             </div>
           </div>
         </div>
