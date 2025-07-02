@@ -4,17 +4,25 @@ import { useAuth } from '../context/AuthContext';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, db } from '../firebaseConfig';
 import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { FiUpload, FiEdit2, FiShare2, FiLogOut, FiSettings, FiGrid, FiList } from 'react-icons/fi';
+import { FaGraduationCap, FaMapMarkerAlt, FaRegFilePdf, FaFileAlt, FaVideo, FaRegBell } from 'react-icons/fa';
 
 const Profile = () => {
   const router = useRouter();
   const { currentUser, userProfile, logout, updateUserProfile } = useAuth();
   
+  // State management
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [editing, setEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [activeTab, setActiveTab] = useState('files');
+  const [fileViewMode, setFileViewMode] = useState('grid');
+  
+  // Bio editing
+  const [editingBio, setEditingBio] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -35,6 +43,17 @@ const Profile = () => {
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [userFiles, setUserFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [showUploadSection, setShowUploadSection] = useState(false);
+  const [selectedFileType, setSelectedFileType] = useState('All');
+  
+  // Stats
+  const [stats, setStats] = useState({
+    totalUploads: 0,
+    totalViews: 0,
+    totalDownloads: 0,
+    followers: 0,
+    following: 0
+  });
 
   useEffect(() => {
     if (!currentUser) {
@@ -54,6 +73,9 @@ const Profile = () => {
       
       // Fetch user's files
       fetchUserFiles();
+      
+      // Calculate stats
+      calculateUserStats();
     }
   }, [currentUser, userProfile, router]);
 
@@ -63,6 +85,29 @@ const Profile = () => {
       ...formData,
       [name]: value
     });
+  };
+  
+  const handleBioChange = (e) => {
+    setFormData({
+      ...formData,
+      bio: e.target.value
+    });
+  };
+  
+  const handleBioSubmit = async () => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    
+    try {
+      await updateUserProfile({ bio: formData.bio });
+      setSuccess('Bio updated successfully');
+      setEditingBio(false);
+    } catch (error) {
+      setError('Failed to update bio');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -234,7 +279,9 @@ const Profile = () => {
             userId: currentUser.uid,
             userDisplayName: userProfile.fullName,
             userUsername: userProfile.username,
-            education: userProfile.education
+            education: userProfile.education,
+            views: 0,
+            downloads: 0
           });
           
           setUploadingFile(false);
@@ -248,6 +295,12 @@ const Profile = () => {
           
           // Reset file input
           document.getElementById('file-upload').value = '';
+          
+          // Update stats
+          calculateUserStats();
+          
+          // Hide upload section after successful upload
+          setShowUploadSection(false);
         }
       );
     } catch (error) {
@@ -277,11 +330,38 @@ const Profile = () => {
       files.sort((a, b) => b.createdAt - a.createdAt);
       
       setUserFiles(files);
+      
+      // Update stats
+      setStats(prevStats => ({
+        ...prevStats,
+        totalUploads: files.length
+      }));
+      
     } catch (error) {
       console.error('Error fetching user files:', error);
     } finally {
       setLoadingFiles(false);
     }
+  };
+  
+  const calculateUserStats = () => {
+    // In a real app, you would fetch this data from the backend
+    // This is a placeholder
+    let totalViews = 0;
+    let totalDownloads = 0;
+    
+    userFiles.forEach(file => {
+      totalViews += file.views || 0;
+      totalDownloads += file.downloads || 0;
+    });
+    
+    setStats({
+      totalUploads: userFiles.length,
+      totalViews: totalViews || Math.floor(Math.random() * 1000) + 100,
+      totalDownloads: totalDownloads || Math.floor(Math.random() * 200) + 50,
+      followers: 90,
+      following: 8
+    });
   };
 
   const formatFileSize = (bytes) => {
@@ -301,10 +381,30 @@ const Profile = () => {
       minute: '2-digit'
     }).format(date);
   };
+  
+  const getFileTypeIcon = (fileType) => {
+    switch (fileType) {
+      case 'PDF':
+        return <FaRegFilePdf className="h-10 w-10 text-red-500" />;
+      case 'Document':
+        return <FaFileAlt className="h-10 w-10 text-blue-500" />;
+      case 'Lecture':
+        return <FaVideo className="h-10 w-10 text-purple-500" />;
+      default:
+        return <FaFileAlt className="h-10 w-10 text-gray-500" />;
+    }
+  };
+  
+  const filterFiles = () => {
+    if (selectedFileType === 'All') {
+      return userFiles;
+    }
+    return userFiles.filter(file => file.fileType === selectedFileType);
+  };
 
   if (!currentUser || !userProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -348,69 +448,102 @@ const Profile = () => {
     'Competition Exam (AJKPSC)',
     'Competition Exam (PMS)'
   ];
+  
+  const filteredFiles = filterFiles();
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-blue-800 text-white">
-        <div className="container mx-auto px-4 py-6">
+      <header className="bg-gradient-to-r from-blue-800 to-blue-600 text-white sticky top-0 z-50 shadow-md">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">TaleemSpot</h1>
-            <div className="flex space-x-4 items-center">
-              <button
-                onClick={() => router.push('/')}
-                className="text-white hover:text-blue-200"
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => router.push('/')} 
+                className="flex items-center space-x-2"
               >
-                Home
+                <img src="/logo.png" alt="TaleemSpot Logo" className="h-8 w-auto" />
+                <h1 className="text-xl md:text-2xl font-bold hidden sm:block">TaleemSpot</h1>
+              </button>
+            </div>
+            <div className="flex space-x-2 md:space-x-4 items-center">
+              <button
+                className="p-2 rounded-full hover:bg-blue-700 transition-colors relative"
+                aria-label="Notifications"
+              >
+                <FaRegBell className="h-5 w-5" />
+                <span className="absolute top-0 right-0 bg-red-500 rounded-full w-2 h-2"></span>
+              </button>
+              <button
+                onClick={() => setShowUploadSection(!showUploadSection)}
+                className="p-2 rounded-full hover:bg-blue-700 transition-colors"
+                aria-label="Upload"
+              >
+                <FiUpload className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => router.push('/settings')}
+                className="p-2 rounded-full hover:bg-blue-700 transition-colors"
+                aria-label="Settings"
+              >
+                <FiSettings className="h-5 w-5" />
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md"
+                className="hidden md:flex items-center space-x-1 bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-md transition-colors"
               >
-                Logout
+                <FiLogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="md:hidden p-2 rounded-full hover:bg-blue-700 transition-colors"
+                aria-label="Logout"
+              >
+                <FiLogOut className="h-5 w-5" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6">
         {error && (
-          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+          <div className="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm" role="alert">
+            <p className="font-medium">Error</p>
+            <p>{error}</p>
           </div>
         )}
         {success && (
-          <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-            {success}
+          <div className="mb-6 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm" role="alert">
+            <p className="font-medium">Success</p>
+            <p>{success}</p>
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <div className="flex items-center">
+        {/* Profile Header */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+          <div className="relative h-32 bg-gradient-to-r from-blue-500 to-indigo-500">
+            <div className="absolute bottom-0 left-0 transform translate-y-1/2 ml-6 md:ml-10">
               <div className="relative">
                 {userProfile.photoURL ? (
                   <img
                     src={userProfile.photoURL}
                     alt={userProfile.fullName}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-blue-500"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
                     {userProfile.fullName ? userProfile.fullName.charAt(0).toUpperCase() : 'U'}
                   </div>
                 )}
                 
                 {!editing && (
                   <label 
-                    className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-1 cursor-pointer"
+                    className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-1.5 cursor-pointer shadow-lg border-2 border-white"
                     htmlFor="profile-image"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                    <FiEdit2 className="h-4 w-4 text-white" />
                     <input
                       id="profile-image"
                       type="file"
@@ -421,43 +554,151 @@ const Profile = () => {
                   </label>
                 )}
               </div>
-              
-              <div className="ml-4">
-                <h2 className="text-xl font-bold">{userProfile.fullName}</h2>
+            </div>
+          </div>
+          
+          <div className="pt-16 px-6 pb-6 md:px-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex items-center">
+                  <h2 className="text-2xl font-bold text-gray-800">{userProfile.fullName}</h2>
+                  {userProfile.role && (
+                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {userProfile.role}
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-600">@{userProfile.username}</p>
-                {userProfile.role && (
-                  <p className="text-blue-600 font-medium">{userProfile.role}</p>
-                )}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {userProfile.education && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaGraduationCap className="mr-1" />
+                      <span>{userProfile.education}</span>
+                    </div>
+                  )}
+                  {userProfile.province && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaMapMarkerAlt className="mr-1" />
+                      <span>{userProfile.province}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-4 md:mt-0 flex flex-col md:flex-row gap-3">
+                <button
+                  onClick={() => setShowUploadSection(!showUploadSection)}
+                  className="flex items-center justify-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+                >
+                  <FiUpload className="h-4 w-4" />
+                  <span>Upload Resource</span>
+                </button>
+                <button
+                  onClick={handleEditToggle}
+                  className={`flex items-center justify-center space-x-1 ${
+                    editing
+                      ? 'bg-gray-500 hover:bg-gray-600'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  } px-4 py-2 rounded-md transition-colors`}
+                >
+                  <FiEdit2 className="h-4 w-4" />
+                  <span>{editing ? 'Cancel' : 'Edit Profile'}</span>
+                </button>
+                <button
+                  className="hidden md:flex items-center justify-center space-x-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition-colors"
+                >
+                  <FiShare2 className="h-4 w-4" />
+                  <span>Share</span>
+                </button>
               </div>
             </div>
             
-            <button
-              onClick={handleEditToggle}
-              className={`mt-4 md:mt-0 ${
-                editing
-                  ? 'bg-gray-500 hover:bg-gray-600'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              } text-white px-4 py-2 rounded-md`}
-            >
-              {editing ? 'Cancel Editing' : 'Edit Profile'}
-            </button>
-          </div>
-
-          {uploadingImage && (
-            <div className="mb-4">
-              <p className="mb-2">Uploading image: {uploadProgress}%</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+            {/* Stats */}
+            <div className="flex flex-wrap justify-center md:justify-start space-x-6 mt-6 border-b border-gray-200 pb-6">
+              <div className="text-center">
+                <div className="text-xl font-bold text-gray-900">{stats.totalUploads}</div>
+                <div className="text-sm text-gray-500">Uploads</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-gray-900">{stats.following}</div>
+                <div className="text-sm text-gray-500">Following</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-gray-900">{stats.followers}</div>
+                <div className="text-sm text-gray-500">Followers</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-gray-900">{stats.totalViews}</div>
+                <div className="text-sm text-gray-500">Views</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-gray-900">4.5</div>
+                <div className="text-sm text-gray-500">Rating</div>
               </div>
             </div>
-          )}
 
-          {editing ? (
+            {/* Bio Section */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-gray-700 font-medium">Bio</h3>
+                {!editingBio && (
+                  <button 
+                    onClick={() => setEditingBio(true)} 
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                  >
+                    {formData.bio ? 'Edit Bio' : 'Add Bio'}
+                  </button>
+                )}
+              </div>
+              
+              {editingBio ? (
+                <div>
+                  <textarea
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleBioChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows="3"
+                    placeholder="Tell people about yourself..."
+                  ></textarea>
+                  <div className="flex justify-end mt-2 space-x-2">
+                    <button 
+                      onClick={() => {
+                        setEditingBio(false);
+                        setFormData({
+                          ...formData,
+                          bio: userProfile.bio || ''
+                        });
+                      }}
+                      className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleBioSubmit}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600">
+                  {formData.bio || (
+                    <span className="text-gray-400 italic">No bio added yet. Add information about yourself.</span>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Edit Profile Form (when editing is true) */}
+        {editing && (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Edit Profile</h2>
             <form onSubmit={handleProfileUpdate}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name
@@ -476,14 +717,19 @@ const Profile = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Username
                   </label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500">@</span>
+                    </div>
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
                 
                 <div>
@@ -555,243 +801,435 @@ const Profile = () => {
                 ></textarea>
               </div>
               
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium"
-              >
-                {loading ? 'Saving...' : 'Save Changes'}
-              </button>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleEditToggle}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:bg-blue-400"
+                >
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </form>
-          ) : (
-            <div>
+          </div>
+        )}
+        
+        {/* File Upload Section (when showUploadSection is true) */}
+        {showUploadSection && (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Upload Resource</h2>
+              <button 
+                onClick={() => setShowUploadSection(false)} 
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={handleFileUpload}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Email</h3>
-                  <p>{userProfile.email}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    File Type
+                  </label>
+                  <select
+                    value={fileType}
+                    onChange={(e) => setFileType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="PDF">PDF</option>
+                    <option value="Document">Document</option>
+                    <option value="Lecture">Lecture (Audio/Video)</option>
+                  </select>
                 </div>
                 
-                {userProfile.province && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Province</h3>
-                    <p>{userProfile.province}</p>
-                  </div>
-                )}
-                
-                {userProfile.education && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Education Level</h3>
-                    <p>{userProfile.education}</p>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={fileCategory}
+                    onChange={(e) => setFileCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Notes">Notes</option>
+                    <option value="Handouts">Handouts</option>
+                    <option value="Final Papers">Final Papers</option>
+                    <option value="Mid Papers">Mid Papers</option>
+                    <option value="Lecture">Lecture</option>
+                    <option value="Tutorial">Tutorial</option>
+                  </select>
+                </div>
                 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Account Status</h3>
-                  <p>
-                    {currentUser.emailVerified ? (
-                      <span className="text-green-600 font-medium">Email Verified</span>
-                    ) : (
-                      <span className="text-red-600 font-medium">Email Not Verified</span>
-                    )}
-                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={fileTitle}
+                    onChange={(e) => setFileTitle(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Title for your file"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={fileDescription}
+                    onChange={(e) => setFileDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Brief description"
+                  />
                 </div>
               </div>
               
-              {userProfile.bio && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Bio</h3>
-                  <p className="text-gray-800">{userProfile.bio}</p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  File (Max 20MB)
+                </label>
+                <input
+                  id="file-upload"
+                  type="file"
+                  onChange={handleFileSelect}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  {fileType === 'PDF' ? 'Accepts PDF files' : 
+                   fileType === 'Document' ? 'Accepts Doc, Docx, Excel, Text files' : 
+                   'Accepts Audio and Video files'}
+                </p>
+              </div>
+              
+              {uploadingFile && (
+                <div className="mb-4">
+                  <p className="mb-2">Uploading file: {fileUploadProgress}%</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${fileUploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadSection(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingFile}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:bg-blue-400"
+                >
+                  {uploadingFile ? 'Uploading...' : 'Upload File'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Tabbed Navigation */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex">
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
+                  activeTab === 'files'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                My Resources
+              </button>
+              <button
+                onClick={() => setActiveTab('stats')}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
+                  activeTab === 'stats'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
+                  activeTab === 'settings'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Account Settings
+              </button>
+            </nav>
+          </div>
+
+          {/* User Files Section */}
+          {activeTab === 'files' && (
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {selectedFileType === 'All' ? 'All Resources' : `${selectedFileType} Files`}
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={selectedFileType}
+                    onChange={(e) => setSelectedFileType(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="All">All Types</option>
+                    <option value="PDF">PDFs</option>
+                    <option value="Document">Documents</option>
+                    <option value="Lecture">Lectures</option>
+                  </select>
+                  <div className="hidden md:flex items-center space-x-2">
+                    <button 
+                      onClick={() => setFileViewMode('grid')}
+                      className={`p-1.5 rounded ${fileViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                    >
+                      <FiGrid className="h-5 w-5" />
+                    </button>
+                    <button 
+                      onClick={() => setFileViewMode('list')}
+                      className={`p-1.5 rounded ${fileViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                    >
+                      <FiList className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {loadingFiles ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : filteredFiles.length === 0 ? (
+                <div className="bg-gray-50 p-12 rounded-lg text-center">
+                  <div className="mx-auto w-24 h-24 flex items-center justify-center rounded-full bg-blue-50 mb-4">
+                    <FiUpload className="h-10 w-10 text-blue-500" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No resources yet</h3>
+                  <p className="text-gray-500 mb-4">Upload your first resource to get started</p>
+                  <button
+                    onClick={() => setShowUploadSection(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <FiUpload className="-ml-1 mr-2 h-4 w-4" />
+                    Upload Resource
+                  </button>
+                </div>
+              ) : fileViewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredFiles.map((file) => (
+                    <div key={file.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="p-4 flex flex-col items-center">
+                        {getFileTypeIcon(file.fileType)}
+                        <h4 className="mt-2 text-center font-medium text-gray-900 line-clamp-1">{file.title}</h4>
+                      </div>
+                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200">
+                        <div className="flex justify-between items-center text-xs text-gray-500">
+                          <span>{formatFileSize(file.fileSize)}</span>
+                          <span>{file.category}</span>
+                        </div>
+                        <div className="mt-2 flex justify-between">
+                          <a 
+                            href={file.fileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            View
+                          </a>
+                          <span className="text-xs text-gray-500">{formatDate(file.createdAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Title
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Size
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredFiles.map((file) => (
+                        <tr key={file.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{file.title}</div>
+                            {file.description && (
+                              <div className="text-xs text-gray-500">{file.description}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              file.fileType === 'PDF' ? 'bg-green-100 text-green-800' :
+                              file.fileType === 'Document' ? 'bg-blue-100 text-blue-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {file.fileType}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {file.category}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatFileSize(file.fileSize)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(file.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a 
+                              href={file.fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           )}
-        </div>
 
-        {/* File Upload Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Upload Resources</h2>
-          
-          <form onSubmit={handleFileUpload}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  File Type
-                </label>
-                <select
-                  value={fileType}
-                  onChange={(e) => setFileType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="PDF">PDF</option>
-                  <option value="Document">Document</option>
-                  <option value="Lecture">Lecture (Audio/Video)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  value={fileCategory}
-                  onChange={(e) => setFileCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="Notes">Notes</option>
-                  <option value="Handouts">Handouts</option>
-                  <option value="Final Papers">Final Papers</option>
-                  <option value="Mid Papers">Mid Papers</option>
-                  <option value="Lecture">Lecture</option>
-                  <option value="Tutorial">Tutorial</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={fileTitle}
-                  onChange={(e) => setFileTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Title for your file"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={fileDescription}
-                  onChange={(e) => setFileDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Brief description"
-                />
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                File (Max 20MB)
-              </label>
-              <input
-                id="file-upload"
-                type="file"
-                onChange={handleFileSelect}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                {fileType === 'PDF' ? 'Accepts PDF files' : 
-                 fileType === 'Document' ? 'Accepts Doc, Docx, Excel, Text files' : 
-                 'Accepts Audio and Video files'}
-              </p>
-            </div>
-            
-            {uploadingFile && (
-              <div className="mb-4">
-                <p className="mb-2">Uploading file: {fileUploadProgress}%</p>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full"
-                    style={{ width: `${fileUploadProgress}%` }}
-                  ></div>
+          {/* Stats Section */}
+          {activeTab === 'stats' && (
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Analytics Overview</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 rounded-lg p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-700 mb-1">{stats.totalViews}</div>
+                  <div className="text-sm text-blue-600">Total Views</div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-6 text-center">
+                  <div className="text-3xl font-bold text-green-700 mb-1">{stats.totalDownloads}</div>
+                  <div className="text-sm text-green-600">Downloads</div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-6 text-center">
+                  <div className="text-3xl font-bold text-purple-700 mb-1">4.5</div>
+                  <div className="text-sm text-purple-600">Average Rating</div>
                 </div>
               </div>
-            )}
-            
-            <button
-              type="submit"
-              disabled={uploadingFile}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium disabled:bg-blue-400"
-            >
-              {uploadingFile ? 'Uploading...' : 'Upload File'}
-            </button>
-          </form>
-        </div>
-
-        {/* User Files Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">My Uploaded Files</h2>
+              
+              {/* Placeholder for charts and more detailed analytics */}
+              <div className="bg-gray-50 rounded-lg p-12 text-center">
+                <h4 className="text-lg font-medium text-gray-700 mb-2">Detailed Analytics</h4>
+                <p className="text-gray-500 mb-4">More detailed analytics will be available soon!</p>
+              </div>
+            </div>
+          )}
           
-          {loadingFiles ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : userFiles.length === 0 ? (
-            <div className="bg-gray-50 p-6 rounded-md text-center">
-              <p className="text-gray-500">You haven't uploaded any files yet.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Title
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Size
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {userFiles.map((file) => (
-                    <tr key={file.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{file.title}</div>
-                        {file.description && (
-                          <div className="text-xs text-gray-500">{file.description}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          file.fileType === 'PDF' ? 'bg-green-100 text-green-800' :
-                          file.fileType === 'Document' ? 'bg-blue-100 text-blue-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {file.fileType}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {file.category}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatFileSize(file.fileSize)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(file.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <a 
-                          href={file.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          View
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Settings Section */}
+          {activeTab === 'settings' && (
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Account Settings</h3>
+              
+              <div className="space-y-6">
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <h4 className="text-md font-medium text-gray-700 mb-2">Email Verification</h4>
+                  {currentUser.emailVerified ? (
+                    <div className="flex items-center text-green-600">
+                      <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Your email is verified</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center text-red-600">
+                        <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Your email is not verified</span>
+                      </div>
+                      <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md self-start">
+                        Resend Verification Email
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-md font-medium text-gray-700 mb-2">Change Password</h4>
+                  <button className="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md">
+                    Change Password
+                  </button>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-md font-medium text-gray-700 mb-2">Notification Settings</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">Email Notifications</span>
+                      <label className="switch">
+                        <input type="checkbox" defaultChecked />
+                        <span className="slider round"></span>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">Push Notifications</span>
+                      <label className="switch">
+                        <input type="checkbox" defaultChecked />
+                        <span className="slider round"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-md font-medium text-red-600 mb-2">Danger Zone</h4>
+                  <button className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md">
+                    Delete Account
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -799,14 +1237,96 @@ const Profile = () => {
 
       <footer className="bg-gray-800 text-white py-6 mt-8">
         <div className="container mx-auto px-4">
-          <div className="text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="text-lg font-medium mb-2">TaleemSpot</h3>
+              <p className="text-sm text-gray-400">
+                Education platform for students and teachers across Pakistan.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-medium mb-2">Quick Links</h3>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li><a href="#" className="hover:text-white">Home</a></li>
+                <li><a href="#" className="hover:text-white">Explore</a></li>
+                <li><a href="#" className="hover:text-white">About Us</a></li>
+                <li><a href="#" className="hover:text-white">Contact</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-medium mb-2">Contact Us</h3>
+              <p className="text-sm text-gray-400">
+                info@taleemspot.com<br />
+                +92 300 1234567
+              </p>
+            </div>
+          </div>
+          <div className="text-center mt-8 text-sm text-gray-400">
             <p>© {new Date().getFullYear()} TaleemSpot. All rights reserved.</p>
-            <p className="mt-2 text-sm text-gray-400">
-              Education platform for students and teachers across Pakistan.
-            </p>
           </div>
         </div>
       </footer>
+
+      {/* Additional CSS for toggle switches */}
+      <style jsx>{`
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+        }
+        
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+        
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+        }
+        
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: .4s;
+        }
+        
+        input:checked + .slider {
+          background-color: #3B82F6;
+        }
+        
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
+        
+        .slider.round {
+          border-radius: 34px;
+        }
+        
+        .slider.round:before {
+          border-radius: 50%;
+        }
+        
+        .line-clamp-1 {
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 1;
+        }
+      `}</style>
     </div>
   );
 };
