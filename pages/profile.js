@@ -1,15 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { storage, db } from '../firebaseConfig';
-import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { FiUpload, FiEdit2, FiShare2, FiLogOut, FiSettings, FiGrid, FiList } from 'react-icons/fi';
-import { FaGraduationCap, FaMapMarkerAlt, FaRegFilePdf, FaFileAlt, FaVideo, FaRegBell } from 'react-icons/fa';
+import { storage } from '../firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { 
+  Edit2, 
+  Share2, 
+  LogOut, 
+  Grid, 
+  List,
+  User,
+  GraduationCap,
+  MapPin,
+  FileText,
+  File,
+  Video,
+  Clock,
+  Eye,
+  Download,
+  Star,
+  Users,
+  Calendar,
+  Award,
+  Activity,
+  Camera,
+  X,
+  ExternalLink,
+  TrendingUp,
+  Target,
+  Zap,
+  CheckCircle,
+  ArrowLeft,
+  Home,
+  Upload
+} from 'lucide-react';
 
 const Profile = () => {
   const router = useRouter();
   const { currentUser, userProfile, logout, updateUserProfile } = useAuth();
+  
+  // Current data as provided
+  const currentDateTime = '2025-07-11 00:58:48';
+  const currentUserLogin = 'itgulraiz';
+  
+  // Show badge for everyone now - rules will be set later
+  const showBadge = true;
   
   // State management
   const [loading, setLoading] = useState(false);
@@ -18,7 +56,6 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState('files');
   const [fileViewMode, setFileViewMode] = useState('grid');
   
   // Bio editing
@@ -33,26 +70,22 @@ const Profile = () => {
     education: ''
   });
 
-  // File upload states
-  const [fileUpload, setFileUpload] = useState(null);
-  const [fileType, setFileType] = useState('PDF');
-  const [fileTitle, setFileTitle] = useState('');
-  const [fileDescription, setFileDescription] = useState('');
-  const [fileCategory, setFileCategory] = useState('Notes');
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [fileUploadProgress, setFileUploadProgress] = useState(0);
+  // File states
   const [userFiles, setUserFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
-  const [showUploadSection, setShowUploadSection] = useState(false);
   const [selectedFileType, setSelectedFileType] = useState('All');
+  const [sortBy, setSortBy] = useState('newest');
   
-  // Stats
+  // Enhanced stats with demo data
   const [stats, setStats] = useState({
     totalUploads: 0,
-    totalViews: 0,
-    totalDownloads: 0,
-    followers: 0,
-    following: 0
+    totalViews: Math.floor(Math.random() * 5000) + 1000,
+    totalDownloads: Math.floor(Math.random() * 2000) + 500,
+    followers: 127,
+    following: 43,
+    rating: (4 + Math.random()).toFixed(1),
+    rank: Math.floor(Math.random() * 100) + 1,
+    streakDays: Math.floor(Math.random() * 30) + 5
   });
 
   useEffect(() => {
@@ -71,10 +104,7 @@ const Profile = () => {
         education: userProfile.education || ''
       });
       
-      // Fetch user's files
       fetchUserFiles();
-      
-      // Calculate stats
       calculateUserStats();
     }
   }, [currentUser, userProfile, router]);
@@ -121,7 +151,6 @@ const Profile = () => {
 
   const handleEditToggle = () => {
     setEditing(!editing);
-    // Reset form data if cancelling
     if (editing && userProfile) {
       setFormData({
         fullName: userProfile.fullName || '',
@@ -160,7 +189,7 @@ const Profile = () => {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
       setError('Image must be less than 5MB');
       return;
     }
@@ -196,119 +225,6 @@ const Profile = () => {
     }
   };
 
-  const handleFileSelect = (e) => {
-    setFileUpload(e.target.files[0]);
-  };
-
-  const handleFileUpload = async (e) => {
-    e.preventDefault();
-    
-    if (!fileUpload) {
-      setError('Please select a file to upload');
-      return;
-    }
-    
-    if (!fileTitle) {
-      setError('Please provide a title for the file');
-      return;
-    }
-    
-    // Check file size (limit to 20MB)
-    if (fileUpload.size > 20 * 1024 * 1024) {
-      setError('File size must be less than 20MB');
-      return;
-    }
-    
-    // Check file type
-    let validFileType = false;
-    
-    if (fileType === 'PDF') {
-      validFileType = fileUpload.type === 'application/pdf';
-    } else if (fileType === 'Document') {
-      validFileType = 
-        fileUpload.type === 'application/msword' || 
-        fileUpload.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        fileUpload.type === 'application/vnd.ms-excel' ||
-        fileUpload.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        fileUpload.type === 'text/plain';
-    } else if (fileType === 'Lecture') {
-      validFileType = 
-        fileUpload.type.startsWith('video/') || 
-        fileUpload.type.startsWith('audio/');
-    }
-    
-    if (!validFileType) {
-      setError(`Selected file is not a valid ${fileType.toLowerCase()}`);
-      return;
-    }
-    
-    setError('');
-    setUploadingFile(true);
-    setFileUploadProgress(0);
-    
-    try {
-      // Upload file to Firebase Storage
-      const fileExtension = fileUpload.name.split('.').pop();
-      const storageRef = ref(storage, `user_files/${currentUser.uid}/${fileType.toLowerCase()}/${Date.now()}_${fileTitle.replace(/\s+/g, '_')}.${fileExtension}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setFileUploadProgress(Math.round(progress));
-        },
-        (error) => {
-          setError('Error uploading file');
-          setUploadingFile(false);
-          console.error(error);
-        },
-        async () => {
-          // Get download URL
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          // Add file info to Firestore
-          await addDoc(collection(db, 'files'), {
-            title: fileTitle,
-            description: fileDescription,
-            fileType: fileType,
-            category: fileCategory,
-            fileUrl: downloadURL,
-            fileSize: fileUpload.size,
-            fileName: fileUpload.name,
-            createdAt: serverTimestamp(),
-            userId: currentUser.uid,
-            userDisplayName: userProfile.fullName,
-            userUsername: userProfile.username,
-            education: userProfile.education,
-            views: 0,
-            downloads: 0
-          });
-          
-          setUploadingFile(false);
-          setSuccess('File uploaded successfully');
-          setFileTitle('');
-          setFileDescription('');
-          setFileUpload(null);
-          
-          // Refresh user files
-          fetchUserFiles();
-          
-          // Reset file input
-          document.getElementById('file-upload').value = '';
-          
-          // Update stats
-          calculateUserStats();
-          
-          // Hide upload section after successful upload
-          setShowUploadSection(false);
-        }
-      );
-    } catch (error) {
-      setError('Error uploading file');
-      setUploadingFile(false);
-    }
-  };
-
   const fetchUserFiles = async () => {
     if (!currentUser) return;
     
@@ -320,18 +236,34 @@ const Profile = () => {
       
       const files = [];
       querySnapshot.forEach(doc => {
+        const fileData = doc.data();
         files.push({
           id: doc.id,
-          ...doc.data()
+          ...fileData,
+          views: fileData.views || Math.floor(Math.random() * 500) + 50,
+          downloads: fileData.downloads || Math.floor(Math.random() * 200) + 10,
+          rating: fileData.rating || (4 + Math.random()).toFixed(1)
         });
       });
       
-      // Sort by createdAt (newest first)
-      files.sort((a, b) => b.createdAt - a.createdAt);
+      files.sort((a, b) => {
+        switch (sortBy) {
+          case 'views':
+            return (b.views || 0) - (a.views || 0);
+          case 'downloads':
+            return (b.downloads || 0) - (a.downloads || 0);
+          case 'rating':
+            return parseFloat(b.rating || 0) - parseFloat(a.rating || 0);
+          case 'oldest':
+            return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+          case 'newest':
+          default:
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+        }
+      });
       
       setUserFiles(files);
       
-      // Update stats
       setStats(prevStats => ({
         ...prevStats,
         totalUploads: files.length
@@ -345,8 +277,6 @@ const Profile = () => {
   };
   
   const calculateUserStats = () => {
-    // In a real app, you would fetch this data from the backend
-    // This is a placeholder
     let totalViews = 0;
     let totalDownloads = 0;
     
@@ -355,16 +285,16 @@ const Profile = () => {
       totalDownloads += file.downloads || 0;
     });
     
-    setStats({
+    setStats(prevStats => ({
+      ...prevStats,
       totalUploads: userFiles.length,
-      totalViews: totalViews || Math.floor(Math.random() * 1000) + 100,
-      totalDownloads: totalDownloads || Math.floor(Math.random() * 200) + 50,
-      followers: 90,
-      following: 8
-    });
+      totalViews: totalViews || prevStats.totalViews,
+      totalDownloads: totalDownloads || prevStats.totalDownloads
+    }));
   };
 
   const formatFileSize = (bytes) => {
+    if (!bytes) return 'Unknown size';
     if (bytes < 1024) return bytes + ' bytes';
     else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     else return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
@@ -372,26 +302,26 @@ const Profile = () => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    const date = timestamp.toDate();
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric'
+      }).format(date);
+    } catch (e) {
+      return 'N/A';
+    }
   };
   
   const getFileTypeIcon = (fileType) => {
     switch (fileType) {
       case 'PDF':
-        return <FaRegFilePdf className="h-10 w-10 text-red-500" />;
-      case 'Document':
-        return <FaFileAlt className="h-10 w-10 text-blue-500" />;
+        return <FileText className="h-8 w-8 text-red-500" />;
       case 'Lecture':
-        return <FaVideo className="h-10 w-10 text-purple-500" />;
+        return <Video className="h-8 w-8 text-purple-500" />;
       default:
-        return <FaFileAlt className="h-10 w-10 text-gray-500" />;
+        return <File className="h-8 w-8 text-gray-500" />;
     }
   };
   
@@ -402,10 +332,151 @@ const Profile = () => {
     return userFiles.filter(file => file.fileType === selectedFileType);
   };
 
+  // Fixed Blue-filled Verification Badge Component
+  const VerificationBadge = ({ className }) => (
+    <div className="relative group">
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        height="20px" 
+        viewBox="0 -960 960 960" 
+        width="20px" 
+        className={`${className} cursor-help transform hover:scale-110 transition-transform duration-200`}
+      >
+        {/* Outer Badge Circle with Blue Fill */}
+        <path 
+          d="m344-60-76-128-144-32 14-148-98-112 98-112-14-148 144-32 76-128 136 58 136-58 76 128 144 32-14 148 98 112-98 112 14 148-144 32-76 128-136-58-136 58Z" 
+          fill="#3B82F6"
+          stroke="#1E40AF"
+          strokeWidth="2"
+        />
+        {/* Inner Checkmark with White Fill */}
+        <path 
+          d="m438-338 226-226-56-58-170 170-86-84-56 56 142 142Z" 
+          fill="white"
+        />
+      </svg>
+      
+      {/* Enhanced Tooltip */}
+      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+        <div className="bg-blue-600 text-white text-sm rounded-lg px-4 py-2 whitespace-nowrap shadow-lg border border-blue-500">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="h-4 w-4" />
+            <span className="font-medium">Verified Account</span>
+          </div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2">
+            <div className="border-4 border-transparent border-t-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const EnhancedFileCard = ({ file, isListView = false }) => (
+    <div className={`group bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border border-gray-200 dark:border-gray-700 overflow-hidden ${
+      isListView ? 'flex items-center p-4' : 'p-6'
+    }`}>
+      
+      <div className={`${isListView ? 'flex items-center space-x-4 w-full' : ''}`}>
+        {/* File Icon */}
+        <div className="flex-shrink-0">
+          <div className="relative">
+            {getFileTypeIcon(file.fileType)}
+          </div>
+        </div>
+
+        {/* File Info */}
+        <div className={`${isListView ? 'flex-1' : 'mt-4'}`}>
+          <h4 className={`font-bold text-gray-900 dark:text-white ${isListView ? 'text-lg' : 'text-base'} line-clamp-2`}>
+            {file.title || 'Untitled Document'}
+          </h4>
+          
+          {file.description && (
+            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">
+              {file.description}
+            </p>
+          )}
+
+          {/* File Stats */}
+          <div className={`flex ${isListView ? 'flex-row space-x-6 mt-2' : 'flex-col space-y-1 mt-3'} text-xs text-gray-500 dark:text-gray-400`}>
+            <div className="flex items-center">
+              <Eye className="h-3 w-3 mr-1" />
+              <span>{file.views || 0} views</span>
+            </div>
+            <div className="flex items-center">
+              <Download className="h-3 w-3 mr-1" />
+              <span>{file.downloads || 0} downloads</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="h-3 w-3 mr-1" />
+              <span>{formatDate(file.createdAt)}</span>
+            </div>
+          </div>
+
+          {/* File Actions */}
+          <div className={`${isListView ? 'flex items-center justify-between mt-3' : 'mt-4'}`}>
+            <div className="flex items-center space-x-1">
+              {[...Array(5)].map((_, i) => (
+                <Star 
+                  key={i} 
+                  className={`h-3 w-3 ${i < Math.floor(file.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                />
+              ))}
+              <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">{file.rating}</span>
+            </div>
+
+            {isListView && (
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded text-xs">
+                  {formatFileSize(file.fileSize)}
+                </span>
+                <a 
+                  href={file.fileUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  View
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Grid View Actions */}
+          {!isListView && (
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded text-xs">
+                {file.category || 'General'}
+              </span>
+              <a 
+                href={file.fileUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                View
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   if (!currentUser || !userProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900 flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-600 border-t-transparent"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <User className="h-8 w-8 text-blue-600" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-6 mb-2">Loading Profile</h3>
+          <p className="text-gray-600 dark:text-gray-400">Please wait while we load your profile...</p>
+        </div>
       </div>
     );
   }
@@ -452,886 +523,587 @@ const Profile = () => {
   const filteredFiles = filterFiles();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-blue-800 to-blue-600 text-white sticky top-0 z-50 shadow-md">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => router.push('/')} 
-                className="flex items-center space-x-2"
-              >
-                <img 
-                  src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
-                  alt="TaleemSpot Logo" 
-                  className="h-8 w-auto rounded-full"
-                />
-                <h1 className="text-xl md:text-2xl font-bold hidden sm:block">TaleemSpot</h1>
-              </button>
-            </div>
-            <div className="flex space-x-2 md:space-x-4 items-center">
-              <button
-                className="p-2 rounded-full hover:bg-blue-700 transition-colors relative"
-                aria-label="Notifications"
-              >
-                <FaRegBell className="h-5 w-5" />
-                <span className="absolute top-0 right-0 bg-red-500 rounded-full w-2 h-2"></span>
-              </button>
-              <button
-                onClick={() => setShowUploadSection(!showUploadSection)}
-                className="p-2 rounded-full hover:bg-blue-700 transition-colors"
-                aria-label="Upload"
-              >
-                <FiUpload className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => router.push('/settings')}
-                className="p-2 rounded-full hover:bg-blue-700 transition-colors"
-                aria-label="Settings"
-              >
-                <FiSettings className="h-5 w-5" />
-              </button>
-              <button
-                onClick={handleLogout}
-                className="hidden md:flex items-center space-x-1 bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-md transition-colors"
-              >
-                <FiLogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="md:hidden p-2 rounded-full hover:bg-blue-700 transition-colors"
-                aria-label="Logout"
-              >
-                <FiLogOut className="h-5 w-5" />
-              </button>
+    <>
+      <Head>
+        <title>My Profile - TaleemSpot | {userProfile.fullName || 'User Profile'}</title>
+        <meta name="description" content={`${userProfile.fullName || 'User'}'s profile on TaleemSpot. Manage your educational resources and account settings.`} />
+        <meta name="keywords" content="profile, TaleemSpot, educational resources, user dashboard" />
+      </Head>
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900">
+        
+        {/* Enhanced Navigation Header */}
+        <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={() => router.back()}
+                  className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <button 
+                  onClick={() => router.push('/')}
+                  className="p-2 bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-lg transition-colors"
+                >
+                  <Home className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </button>
+                <div className="hidden sm:flex items-center space-x-3">
+                  <img 
+                    src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+                    alt="TaleemSpot" 
+                    className="h-8 w-8 rounded-full"
+                  />
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">My Profile</h1>
+                </div>
+              </div>
+              
+              {/* Enhanced Navigation with Upload Button */}
+              <div className="flex items-center space-x-4">
+                {/* Upload Button */}
+                <button
+                  onClick={() => router.push('/upload')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span className="hidden sm:inline">Upload</span>
+                </button>
+                
+                <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2">
+                  <Clock className="h-3 w-3" />
+                  <span>UTC: {currentDateTime}</span>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
+                
+                <button
+                  onClick={handleLogout}
+                  className="p-2 bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 rounded-lg transition-colors"
+                  aria-label="Logout"
+                >
+                  <LogOut className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-6">
-        {error && (
-          <div className="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm" role="alert">
-            <p className="font-medium">Error</p>
-            <p>{error}</p>
-          </div>
-        )}
-        {success && (
-          <div className="mb-6 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm" role="alert">
-            <p className="font-medium">Success</p>
-            <p>{success}</p>
-          </div>
-        )}
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          {/* Alert Messages */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+              <div className="flex items-center">
+                <X className="h-5 w-5 text-red-500 mr-3" />
+                <span className="text-red-700 dark:text-red-400">{error}</span>
+              </div>
+            </div>
+          )}
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+                <span className="text-green-700 dark:text-green-400">{success}</span>
+              </div>
+            </div>
+          )}
 
-        {/* Profile Header */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
-          <div className="relative h-32 bg-gradient-to-r from-blue-500 to-indigo-500">
-            <div className="absolute bottom-0 left-0 transform translate-y-1/2 ml-6 md:ml-10">
-              <div className="relative">
-                {userProfile.photoURL || (currentUser && currentUser.photoURL) ? (
-                  <img
-                    src={userProfile.photoURL || currentUser.photoURL}
-                    alt={userProfile.fullName}
-                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
-                    {userProfile.fullName ? userProfile.fullName.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                )}
-                
-                {!editing && (
-                  <label 
-                    className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-1.5 cursor-pointer shadow-lg border-2 border-white"
-                    htmlFor="profile-image"
-                  >
-                    <FiEdit2 className="h-4 w-4 text-white" />
-                    <input
-                      id="profile-image"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
+          {/* Enhanced Profile Header */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden mb-8 border border-gray-200 dark:border-gray-700">
+            {/* Cover Background */}
+            <div className="relative h-48 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+              <div className="absolute inset-0 bg-black/20"></div>
+              
+              {/* Profile Picture */}
+              <div className="absolute bottom-0 left-8 transform translate-y-1/2">
+                <div className="relative">
+                  {userProfile.photoURL || (currentUser && currentUser.photoURL) ? (
+                    <img
+                      src={userProfile.photoURL || currentUser.photoURL}
+                      alt={userProfile.fullName}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-2xl"
                     />
-                  </label>
-                )}
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center text-white text-4xl font-bold border-4 border-white dark:border-gray-800 shadow-2xl">
+                      {userProfile.fullName ? userProfile.fullName.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                  )}
+                  
+                  {/* Camera Icon for Image Upload */}
+                  {!editing && (
+                    <label 
+                      className="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 rounded-full p-2 cursor-pointer shadow-lg border-2 border-white dark:border-gray-800 transition-colors"
+                      htmlFor="profile-image"
+                    >
+                      <Camera className="h-4 w-4 text-white" />
+                      <input
+                        id="profile-image"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  )}
+                  
+                  {/* Upload Progress */}
+                  {uploadingImage && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <div className="text-white text-sm font-medium">{uploadProgress}%</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Profile Content */}
+            <div className="pt-20 px-8 pb-8">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex-1">
+                  {/* Name and Role */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mb-4">
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                        {userProfile.fullName}
+                      </h1>
+                      <div className="flex items-center space-x-3 mb-2">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">@{userProfile.username}</p>
+                        {/* Fixed Blue Verification Badge */}
+                        {showBadge && <VerificationBadge />}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {userProfile.role && (
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            userProfile.role === 'Teacher' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                          }`}>
+                            {userProfile.role}
+                          </span>
+                        )}
+                        <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-300 rounded-full text-sm font-medium flex items-center">
+                          <Award className="h-3 w-3 mr-1" />
+                          Rank #{stats.rank}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Location and Education */}
+                  <div className="flex flex-wrap gap-4 text-gray-600 dark:text-gray-400 mb-6">
+                    {userProfile.education && (
+                      <div className="flex items-center">
+                        <GraduationCap className="h-4 w-4 mr-2" />
+                        <span>{userProfile.education}</span>
+                      </div>
+                    )}
+                    {userProfile.province && (
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>{userProfile.province}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center">
+                      <Zap className="h-4 w-4 mr-2" />
+                      <span>{stats.streakDays} day streak</span>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 text-center">
+                      <div className="flex items-center justify-center text-blue-600 dark:text-blue-400 mb-2">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalUploads}</div>
+                      <div className="text-xs text-gray-500">Resources</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center">
+                      <div className="flex items-center justify-center text-green-600 dark:text-green-400 mb-2">
+                        <Eye className="h-5 w-5" />
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalViews.toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">Views</div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 text-center">
+                      <div className="flex items-center justify-center text-purple-600 dark:text-purple-400 mb-2">
+                        <Download className="h-5 w-5" />
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalDownloads.toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">Downloads</div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-4 text-center">
+                      <div className="flex items-center justify-center text-yellow-600 dark:text-yellow-400 mb-2">
+                        <Star className="h-5 w-5" />
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.rating}</div>
+                      <div className="text-xs text-gray-500">Rating</div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 rounded-xl p-4 text-center">
+                      <div className="flex items-center justify-center text-pink-600 dark:text-pink-400 mb-2">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.followers}</div>
+                      <div className="text-xs text-gray-500">Followers</div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl p-4 text-center">
+                      <div className="flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-2">
+                        <TrendingUp className="h-5 w-5" />
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.following}</div>
+                      <div className="text-xs text-gray-500">Following</div>
+                    </div>
+                  </div>
+
+                  {/* Bio Section */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">About</h3>
+                      {!editingBio && (
+                        <button 
+                          onClick={() => setEditingBio(true)} 
+                          className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
+                        >
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          {formData.bio ? 'Edit' : 'Add Bio'}
+                        </button>
+                      )}
+                    </div>
+                    
+                    {editingBio ? (
+                      <div>
+                        <textarea
+                          name="bio"
+                          value={formData.bio}
+                          onChange={handleBioChange}
+                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          rows="3"
+                          placeholder="Tell people about yourself..."
+                        ></textarea>
+                        <div className="flex justify-end mt-3 space-x-3">
+                          <button 
+                            onClick={() => {
+                              setEditingBio(false);
+                              setFormData({
+                                ...formData,
+                                bio: userProfile.bio || ''
+                              });
+                            }}
+                            className="px-4 py-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            onClick={handleBioSubmit}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                        {formData.bio || (
+                          <span className="text-gray-400 italic">No bio added yet. Share something about yourself!</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="lg:ml-8 mt-6 lg:mt-0 space-y-3">
+                  <button
+                    onClick={handleEditToggle}
+                    className="w-full lg:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                  >
+                    <Edit2 className="h-5 w-5" />
+                    <span>{editing ? 'Cancel Edit' : 'Edit Profile'}</span>
+                  </button>
+                  
+                  <button className="w-full lg:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl font-semibold transition-all duration-200">
+                    <Share2 className="h-5 w-5" />
+                    <span>Share Profile</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="pt-16 px-6 pb-6 md:px-10">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex items-center">
-                  <h2 className="text-2xl font-bold text-gray-800">{userProfile.fullName}</h2>
-                  {userProfile.role && (
-                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      {userProfile.role}
-                    </span>
-                  )}
-                </div>
-                <p className="text-gray-600">@{userProfile.username}</p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {userProfile.education && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FaGraduationCap className="mr-1" />
-                      <span>{userProfile.education}</span>
-                    </div>
-                  )}
-                  {userProfile.province && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FaMapMarkerAlt className="mr-1" />
-                      <span>{userProfile.province}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="mt-4 md:mt-0 flex flex-col md:flex-row gap-3">
-                <button
-                  onClick={() => setShowUploadSection(!showUploadSection)}
-                  className="flex items-center justify-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-                >
-                  <FiUpload className="h-4 w-4" />
-                  <span>Upload Resource</span>
-                </button>
-                <button
-                  onClick={handleEditToggle}
-                  className={`flex items-center justify-center space-x-1 ${
-                    editing
-                      ? 'bg-gray-500 hover:bg-gray-600'
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                  } px-4 py-2 rounded-md transition-colors`}
-                >
-                  <FiEdit2 className="h-4 w-4" />
-                  <span>{editing ? 'Cancel' : 'Edit Profile'}</span>
-                </button>
-                <button
-                  className="hidden md:flex items-center justify-center space-x-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition-colors"
-                >
-                  <FiShare2 className="h-4 w-4" />
-                  <span>Share</span>
-                </button>
-              </div>
-            </div>
-            
-            {/* Stats */}
-            <div className="flex flex-wrap justify-center md:justify-start space-x-6 mt-6 border-b border-gray-200 pb-6">
-              <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{stats.totalUploads}</div>
-                <div className="text-sm text-gray-500">Uploads</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{stats.following}</div>
-                <div className="text-sm text-gray-500">Following</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{stats.followers}</div>
-                <div className="text-sm text-gray-500">Followers</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{stats.totalViews}</div>
-                <div className="text-sm text-gray-500">Views</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">4.5</div>
-                <div className="text-sm text-gray-500">Rating</div>
-              </div>
-            </div>
-
-            {/* Bio Section */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-gray-700 font-medium">Bio</h3>
-                {!editingBio && (
-                  <button 
-                    onClick={() => setEditingBio(true)} 
-                    className="text-blue-600 hover:text-blue-800 text-sm"
-                  >
-                    {formData.bio ? 'Edit Bio' : 'Add Bio'}
-                  </button>
-                )}
-              </div>
-              
-              {editingBio ? (
-                <div>
-                  <textarea
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleBioChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows="3"
-                    placeholder="Tell people about yourself..."
-                  ></textarea>
-                  <div className="flex justify-end mt-2 space-x-2">
-                    <button 
-                      onClick={() => {
-                        setEditingBio(false);
-                        setFormData({
-                          ...formData,
-                          bio: userProfile.bio || ''
-                        });
-                      }}
-                      className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={handleBioSubmit}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-600">
-                  {formData.bio || (
-                    <span className="text-gray-400 italic">No bio added yet. Add information about yourself.</span>
-                  )}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Edit Profile Form (when editing is true) */}
-        {editing && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Edit Profile</h2>
-            <form onSubmit={handleProfileUpdate}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500">@</span>
-                    </div>
+          {/* Edit Profile Form */}
+          {editing && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden mb-8 p-8 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <Edit2 className="h-6 w-6 mr-3" />
+                Edit Profile Information
+              </h2>
+              <form onSubmit={handleProfileUpdate}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Full Name
+                    </label>
                     <input
                       type="text"
-                      name="username"
-                      value={formData.username}
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleChange}
-                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       required
                     />
                   </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role
-                  </label>
-                  <select
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Role</option>
-                    <option value="Student">Student</option>
-                    <option value="Teacher">Teacher</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Province
-                  </label>
-                  <select
-                    name="province"
-                    value={formData.province}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Province</option>
-                    {provinces.map((province) => (
-                      <option key={province} value={province}>
-                        {province}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Education Level
-                  </label>
-                  <select
-                    name="education"
-                    value={formData.education}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Education Level</option>
-                    {educationLevels.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bio
-                </label>
-                <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  rows="3"
-                  placeholder="Tell us about yourself"
-                ></textarea>
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={handleEditToggle}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:bg-blue-400"
-                >
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-        
-        {/* File Upload Section (when showUploadSection is true) */}
-        {showUploadSection && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Upload Resource</h2>
-              <button 
-                onClick={() => setShowUploadSection(false)} 
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <form onSubmit={handleFileUpload}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    File Type
-                  </label>
-                  <select
-                    value={fileType}
-                    onChange={(e) => setFileType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="PDF">PDF</option>
-                    <option value="Document">Document</option>
-                    <option value="Lecture">Lecture (Audio/Video)</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={fileCategory}
-                    onChange={(e) => setFileCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="Notes">Notes</option>
-                    <option value="Handouts">Handouts</option>
-                    <option value="Final Papers">Final Papers</option>
-                    <option value="Mid Papers">Mid Papers</option>
-                    <option value="Lecture">Lecture</option>
-                    <option value="Tutorial">Tutorial</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={fileTitle}
-                    onChange={(e) => setFileTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Title for your file"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={fileDescription}
-                    onChange={(e) => setFileDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Brief description"
-                  />
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  File (Max 20MB)
-                </label>
-                <input
-                  id="file-upload"
-                  type="file"
-                  onChange={handleFileSelect}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  {fileType === 'PDF' ? 'Accepts PDF files' : 
-                   fileType === 'Document' ? 'Accepts Doc, Docx, Excel, Text files' : 
-                   'Accepts Audio and Video files'}
-                </p>
-              </div>
-              
-              {uploadingFile && (
-                <div className="mb-4">
-                  <p className="mb-2">Uploading file: {fileUploadProgress}%</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${fileUploadProgress}%` }}
-                    ></div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Username
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span className="text-gray-500">@</span>
+                      </div>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        className="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Role
+                    </label>
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select Role</option>
+                      <option value="Student">Student</option>
+                      <option value="Teacher">Teacher</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Province
+                    </label>
+                    <select
+                      name="province"
+                      value={formData.province}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select Province</option>
+                      {provinces.map((province) => (
+                        <option key={province} value={province}>
+                          {province}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Education Level
+                    </label>
+                    <select
+                      name="education"
+                      value={formData.education}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select Education Level</option>
+                      {educationLevels.map((level) => (
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              )}
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowUploadSection(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={uploadingFile}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:bg-blue-400"
-                >
-                  {uploadingFile ? 'Uploading...' : 'Upload File'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Bio
+                  </label>
+                  <textarea
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    rows="4"
+                    placeholder="Tell us about yourself..."
+                  ></textarea>
+                </div>
+                
+                <div className="flex justify-end space-x-4">
+                  <button
+                    type="button"
+                    onClick={handleEditToggle}
+                    className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-xl transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all transform hover:scale-105 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
-        {/* Tabbed Navigation */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
-              <button
-                onClick={() => setActiveTab('files')}
-                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === 'files'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                My Resources
-              </button>
-              <button
-                onClick={() => setActiveTab('stats')}
-                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === 'stats'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Analytics
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === 'settings'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Account Settings
-              </button>
-            </nav>
-          </div>
+          {/* My Resources Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="p-8">
+              {/* Section Header */}
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center">
+                    <FileText className="h-6 w-6 mr-3" />
+                    My Resources
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {filteredFiles.length} resources uploaded
+                  </p>
+                </div>
 
-          {/* User Files Section */}
-          {activeTab === 'files' && (
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {selectedFileType === 'All' ? 'All Resources' : `${selectedFileType} Files`}
-                </h3>
-                <div className="flex items-center space-x-2">
+                {/* Enhanced Filters */}
+                <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-4 lg:mt-0">
+                  {/* File Type Filter */}
                   <select
                     value={selectedFileType}
                     onChange={(e) => setSelectedFileType(e.target.value)}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="All">All Types</option>
                     <option value="PDF">PDFs</option>
-                    <option value="Document">Documents</option>
                     <option value="Lecture">Lectures</option>
                   </select>
-                  <div className="hidden md:flex items-center space-x-2">
-                    <button 
+
+                  {/* Sort Filter */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="views">Most Viewed</option>
+                    <option value="downloads">Most Downloaded</option>
+                    <option value="rating">Highest Rated</option>
+                  </select>
+
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                    <button
                       onClick={() => setFileViewMode('grid')}
-                      className={`p-1.5 rounded ${fileViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                      className={`p-2 rounded-md transition-colors ${
+                        fileViewMode === 'grid' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
                     >
-                                           <FiGrid className="h-5 w-5" />
+                      <Grid className="h-4 w-4" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => setFileViewMode('list')}
-                      className={`p-1.5 rounded ${fileViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                      className={`p-2 rounded-md transition-colors ${
+                        fileViewMode === 'list' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
                     >
-                      <FiList className="h-5 w-5" />
+                      <List className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               </div>
               
+              {/* Resources Display */}
               {loadingFiles ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-blue-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mt-4 mb-2">Loading Resources</h3>
+                  <p className="text-gray-600 dark:text-gray-400">Fetching your uploaded files...</p>
                 </div>
               ) : filteredFiles.length === 0 ? (
-                <div className="bg-gray-50 p-12 rounded-lg text-center">
-                  <div className="mx-auto w-24 h-24 flex items-center justify-center rounded-full bg-blue-50 mb-4">
-                    <FiUpload className="h-10 w-10 text-blue-500" />
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-700 dark:to-slate-700 rounded-2xl p-16 text-center">
+                  <div className="mx-auto w-24 h-24 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20 mb-6">
+                    <FileText className="h-12 w-12 text-blue-500 dark:text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">No resources yet</h3>
-                  <p className="text-gray-500 mb-4">Upload your first resource to get started</p>
-                  <button
-                    onClick={() => setShowUploadSection(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FiUpload className="-ml-1 mr-2 h-4 w-4" />
-                    Upload Resource
-                  </button>
-                </div>
-              ) : fileViewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filteredFiles.map((file) => (
-                    <div key={file.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                      <div className="p-4 flex flex-col items-center">
-                        {getFileTypeIcon(file.fileType)}
-                        <h4 className="mt-2 text-center font-medium text-gray-900 line-clamp-1">{file.title}</h4>
-                      </div>
-                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200">
-                        <div className="flex justify-between items-center text-xs text-gray-500">
-                          <span>{formatFileSize(file.fileSize)}</span>
-                          <span>{file.category}</span>
-                        </div>
-                        <div className="mt-2 flex justify-between">
-                          <a 
-                            href={file.fileUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-800"
-                          >
-                            View
-                          </a>
-                          <span className="text-xs text-gray-500">{formatDate(file.createdAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Resources Yet</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                    {selectedFileType === 'All' 
+                      ? "You haven't uploaded any resources yet. Start sharing your knowledge!"
+                      : `No ${selectedFileType.toLowerCase()} files found. Try changing the filter.`
+                    }
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button
+                      onClick={() => router.push('/upload')}
+                      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                    >
+                      Upload Resources
+                    </button>
+                    {selectedFileType !== 'All' && (
+                      <button
+                        onClick={() => setSelectedFileType('All')}
+                        className="inline-flex items-center px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl font-semibold transition-colors"
+                      >
+                        Show All Resources
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Title
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Type
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Category
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Size
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredFiles.map((file) => (
-                        <tr key={file.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{file.title}</div>
-                            {file.description && (
-                              <div className="text-xs text-gray-500">{file.description}</div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              file.fileType === 'PDF' ? 'bg-green-100 text-green-800' :
-                              file.fileType === 'Document' ? 'bg-blue-100 text-blue-800' :
-                              'bg-purple-100 text-purple-800'
-                            }`}>
-                              {file.fileType}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {file.category}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatFileSize(file.fileSize)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(file.createdAt)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a 
-                              href={file.fileUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              View
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className={
+                  fileViewMode === 'grid' 
+                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                    : 'space-y-4'
+                }>
+                  {filteredFiles.map((file) => (
+                    <EnhancedFileCard key={file.id} file={file} isListView={fileViewMode === 'list'} />
+                  ))}
                 </div>
               )}
             </div>
-          )}
-
-          {/* Stats Section */}
-          {activeTab === 'stats' && (
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Analytics Overview</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 rounded-lg p-6 text-center">
-                  <div className="text-3xl font-bold text-blue-700 mb-1">{stats.totalViews}</div>
-                  <div className="text-sm text-blue-600">Total Views</div>
-                </div>
-                <div className="bg-green-50 rounded-lg p-6 text-center">
-                  <div className="text-3xl font-bold text-green-700 mb-1">{stats.totalDownloads}</div>
-                  <div className="text-sm text-green-600">Downloads</div>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-6 text-center">
-                  <div className="text-3xl font-bold text-purple-700 mb-1">4.5</div>
-                  <div className="text-sm text-purple-600">Average Rating</div>
-                </div>
-              </div>
-              
-              {/* Placeholder for charts and more detailed analytics */}
-              <div className="bg-gray-50 rounded-lg p-12 text-center">
-                <h4 className="text-lg font-medium text-gray-700 mb-2">Detailed Analytics</h4>
-                <p className="text-gray-500 mb-4">More detailed analytics will be available soon!</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Settings Section */}
-          {activeTab === 'settings' && (
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Account Settings</h3>
-              
-              <div className="space-y-6">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <h4 className="text-md font-medium text-gray-700 mb-2">Email Verification</h4>
-                  {currentUser.emailVerified ? (
-                    <div className="flex items-center text-green-600">
-                      <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Your email is verified</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center text-red-600">
-                        <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Your email is not verified</span>
-                      </div>
-                      <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md self-start">
-                        Resend Verification Email
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-md font-medium text-gray-700 mb-2">Change Password</h4>
-                  <button className="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md">
-                    Change Password
-                  </button>
-                </div>
-                
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-md font-medium text-gray-700 mb-2">Notification Settings</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">Email Notifications</span>
-                      <label className="switch">
-                        <input type="checkbox" defaultChecked />
-                        <span className="slider round"></span>
-                      </label>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">Push Notifications</span>
-                      <label className="switch">
-                        <input type="checkbox" defaultChecked />
-                        <span className="slider round"></span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-md font-medium text-red-600 mb-2">Danger Zone</h4>
-                  <button className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md">
-                    Delete Account
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-
-      <footer className="bg-gray-800 text-white py-6 mt-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-lg font-medium mb-2">TaleemSpot</h3>
-              <p className="text-sm text-gray-400">
-                Education platform for students and teachers across Pakistan.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium mb-2">Quick Links</h3>
-              <ul className="text-sm text-gray-400 space-y-1">
-                <li><a href="#" className="hover:text-white">Home</a></li>
-                <li><a href="#" className="hover:text-white">Explore</a></li>
-                <li><a href="#" className="hover:text-white">About Us</a></li>
-                <li><a href="#" className="hover:text-white">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium mb-2">Contact Us</h3>
-              <p className="text-sm text-gray-400">
-                info@taleemspot.com<br />
-                +92 300 1234567
-              </p>
-            </div>
           </div>
-          <div className="text-center mt-8 text-sm text-gray-400">
-            <p>© {new Date().getFullYear()} TaleemSpot. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+        </main>
+      </div>
 
-      {/* Additional CSS for toggle switches */}
       <style jsx>{`
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 44px;
-          height: 24px;
-        }
-        
-        .switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #ccc;
-          transition: .4s;
-        }
-        
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 18px;
-          width: 18px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          transition: .4s;
-        }
-        
-        input:checked + .slider {
-          background-color: #3B82F6;
-        }
-        
-        input:checked + .slider:before {
-          transform: translateX(20px);
-        }
-        
-        .slider.round {
-          border-radius: 34px;
-        }
-        
-        .slider.round:before {
-          border-radius: 50%;
-        }
-        
         .line-clamp-1 {
           overflow: hidden;
           display: -webkit-box;
           -webkit-box-orient: vertical;
           -webkit-line-clamp: 1;
         }
+        .line-clamp-2 {
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+        }
       `}</style>
-    </div>
+    </>
   );
 };
 
