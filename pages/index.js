@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, memo } from 'react';
-import { Search, BookOpen, Users, Star, TrendingUp, Calendar, Award } from 'lucide-react';
+import { Search, BookOpen, Users, Star, TrendingUp, Calendar, Award, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { collection, getDocs } from 'firebase/firestore';
@@ -213,7 +213,7 @@ const allCollections = [
   'VirtualUniversityRollNoSlip', 'VirtualUniversitySyllabus', 'VirtualUniversityTest', 'VirtualUniversityTextBooks',
 ];
 
-// Category definitions with restricted content types for PairingScheme, GuessPapers, and Gazette
+// Category definitions
 const categoryDefinitions = {
   School: {
     provinces: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
@@ -239,7 +239,7 @@ const categoryDefinitions = {
   },
   University: {
     classes: ['BDS', 'MBBS', 'AllamaIqbalOpenUniversity', 'VirtualUniversity', 'OtherUniversity'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'RollNoSlip'],
+    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'RollNoSlip'],
     provincesFor: {
       OtherUniversity: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
     },
@@ -249,7 +249,7 @@ const categoryDefinitions = {
     contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Quiz', 'Test', 'Syllabus', 'Result'],
   },
   General: {
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'UrduCalligraphy', 'EnglishCalligraphy', 'EnglishLanguage'],
+    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'DateSheet', 'Gazette', 'PairingScheme', 'UrduCalligraphy', 'EnglishCalligraphy', 'EnglishLanguage'],
   },
 };
 
@@ -298,7 +298,7 @@ const parseCollectionName = (collectionName) => {
   const provinces = categoryDefinitions.School.provinces;
   const schoolClasses = categoryDefinitions.School.classes;
   const collegeClasses = categoryDefinitions.College.classes;
-  const contentTypes = [...new Set([...categoryDefinitions.School.contentTypes, ...categoryDefinitions.College.contentTypes])];
+  const contentTypes = [...categoryDefinitions.School.contentTypes, ...categoryDefinitions.College.contentTypes];
 
   for (const province of provinces) {
     if (collectionName.startsWith(province)) {
@@ -306,10 +306,6 @@ const parseCollectionName = (collectionName) => {
       const cls = [...schoolClasses, ...collegeClasses].find((c) => remaining.startsWith(c));
       if (cls) {
         contentType = remaining.replace(cls, '');
-        // Restrict PairingScheme, GuessPapers, and Gazette to 9th, 10th, 11th, 12th
-        if (['PairingScheme', 'GuessPapers', 'Gazette'].includes(contentType) && !['9th', '10th', '11th', '12th'].includes(cls)) {
-          return null; // Skip invalid collections
-        }
         category = schoolClasses.includes(cls) ? 'School' : 'College';
         return { category, province, classLevel: cls, contentType };
       }
@@ -341,9 +337,7 @@ export async function getStaticProps() {
         const snapshot = await getDocs(collRef);
 
         if (!snapshot.empty) {
-          const parsed = parseCollectionName(collectionName);
-          if (!parsed) continue; // Skip invalid collections
-          const { category, province, classLevel, contentType } = parsed;
+          const { category, province, classLevel, contentType } = parseCollectionName(collectionName);
 
           // Update category counts
           if (category in categoryCounts) {
@@ -604,35 +598,35 @@ const TaleemSpot = ({
   const [filteredData, setFilteredData] = useState(resources || []);
   const [activeNews, setActiveNews] = useState(0);
 
-  // Updated to Top 4 Trending Posts
-  const trendingPosts = useMemo(() => [
+  // Updated news data to reflect broader categories
+  const latestNews = useMemo(() => [
     {
       id: 1,
-      title: 'MDCAT 2024 Past Papers - Punjab Board',
-      date: 'Most Popular',
-      content: 'Highly accessed MDCAT 2024 past papers from Punjab Board, downloaded by thousands of students.',
+      title: '9th Class Biology 2024 - Lahore Board',
+      date: 'Just Now',
+      content: 'Latest 9th Class Biology past paper from Lahore Board for 2024 examination is now available for download.',
       type: 'trending',
     },
     {
       id: 2,
-      title: '9th Class Physics Notes - Lahore Board',
-      date: 'Top Resource',
-      content: 'Top-rated comprehensive Physics notes for 9th class students under Lahore Board.',
-      type: 'trending',
+      title: 'CSS 2024 General Knowledge Notes',
+      date: '2 hours ago',
+      content: 'Comprehensive notes for CSS 2024 General Knowledge section now available.',
+      type: 'new',
     },
     {
       id: 3,
-      title: 'CSS General Knowledge 2024 Quiz',
-      date: 'Highly Rated',
-      content: 'Popular quiz for CSS 2024 General Knowledge preparation, widely used by aspirants.',
-      type: 'trending',
+      title: 'MDCAT 2024 Preparation Guide',
+      date: '5 hours ago',
+      content: 'Complete preparation guide and past papers for MDCAT 2024 entrance test.',
+      type: 'popular',
     },
     {
       id: 4,
-      title: 'O Level Chemistry Past Papers 2024',
-      date: 'Trending',
-      content: 'Frequently downloaded O Level Chemistry past papers for 2024, essential for Cambridge students.',
-      type: 'trending',
+      title: 'O Level Mathematics Past Papers 2024',
+      date: '1 day ago',
+      content: 'Access the latest O Level Mathematics past papers for 2024.',
+      type: 'new',
     },
   ], []);
 
@@ -702,14 +696,14 @@ const TaleemSpot = ({
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, resources, allResources, subjectCategories, boardCategories]);
 
-  // Auto-rotate trending posts
+  // Auto-rotate news
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveNews((prev) => (prev + 1) % trendingPosts.length);
+      setActiveNews((prev) => (prev + 1) % latestNews.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [trendingPosts.length]);
+  }, [latestNews.length]);
 
   return (
     <>
@@ -775,21 +769,21 @@ const TaleemSpot = ({
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Sidebar */}
             <div className="lg:col-span-1">
-              {/* Top 4 Trending Posts Section */}
+              {/* Latest News Section */}
               <SidebarSection
-                title="Top Trending Posts"
-                subtitle={`Most Popular Resources - ${new Date().getDate()}`}
+                title="Latest News"
+                subtitle={`Stay Up to Date with TaleemSpot - ${new Date().getDate()}`}
                 icon={TrendingUp}
                 colorScheme="red"
                 showSerialNumbers={true}
-                items={trendingPosts.map((post, index) => ({
-                  name: post.title,
-                  badge: index === 0 ? 'Most Popular' : null,
+                items={latestNews.map((news, index) => ({
+                  name: news.title,
+                  badge: index === 0 ? 'Trending News' : null,
                   href: '#',
                 }))}
-                viewAllLink="/trending-posts"
+                viewAllLink="/all-news"
                 badgeColors={{
-                  'Most Popular': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
+                  'Trending News': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
                 }}
               />
 
@@ -808,23 +802,6 @@ const TaleemSpot = ({
                     href: `/${cat.id}`,
                   }))}
                 viewAllLink="/all-classes"
-              />
-
-              {/* Cambridge Section */}
-              <SidebarSection
-                title="O Levels & A Levels"
-                subtitle="Cambridge Resources"
-                icon={BookOpen}
-                colorScheme="teal"
-                showSerialNumbers={true}
-                items={classCategories
-                  .filter((cat) => cat.category === 'Cambridge')
-                  .map((cat) => ({
-                    name: cat.name,
-                    count: cat.count,
-                    href: `/${cat.id}`,
-                  }))}
-                viewAllLink="/cambridge"
               />
 
               {/* Entry Test Section */}
@@ -867,14 +844,7 @@ const TaleemSpot = ({
               {/* Content Grid - Exactly 8 Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
                 {(searchTerm ? filteredData.slice(0, 12) : filteredData.slice(0, 8)).map((item) => (
-                  <ResourceCard
-                    key={item.id}
-                    resource={{
-                      ...item,
-                      // Ensure ResourceCard displays these details instead of N/A N/A
-                      displayInfo: `${item.class} ${item.category} ${item.subject} ${item.type}${item.province ? ` - ${item.province}` : ''}`,
-                    }}
-                  />
+                  <ResourceCard key={item.id} resource={item} />
                 ))}
 
                 {filteredData.length === 0 && searchTerm && (
