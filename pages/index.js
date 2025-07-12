@@ -373,10 +373,12 @@ export async function getStaticProps() {
                     collection: collectionName,
                     documentId: doc.id,
                     itemIndex: index,
-                    path: `/${collectionName}/${doc.id}/${index}`,
+                    // Updated path to class/type/documentId format
+                    path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                     author: data.userInfo?.authorName || getRandomAuthor(),
                     category,
                     province,
+                    authorImage: data.userInfo?.authorImage || null, // Added for potential author image
                   };
                   allData.push(resource);
                 }
@@ -398,10 +400,12 @@ export async function getStaticProps() {
                 collection: collectionName,
                 documentId: doc.id,
                 itemIndex: 0,
-                path: `/${collectionName}/${doc.id}`,
+                // Updated path to class/type/documentId format
+                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
+                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
               };
               allData.push(resource);
             } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
@@ -421,10 +425,12 @@ export async function getStaticProps() {
                 collection: collectionName,
                 documentId: doc.id,
                 itemIndex: 0,
-                path: `/${collectionName}/${doc.id}`,
+                // Updated path to class/type/documentId format
+                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
+                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
                 quiz: data.academicInfo.quiz,
               };
               allData.push(resource);
@@ -857,7 +863,6 @@ const TaleemSpot = ({
                   </div>
                 )}
 
-                {/* View All Resources Button */}
                 {!searchTerm && allResources.length > 8 && <ViewAllButton href="/all-resources" />}
               </div>
             </div>
