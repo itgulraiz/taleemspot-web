@@ -4,13 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import Header from '../../../components/Header';
-import Footer from '../../../components/Footer';
-import ResourceCard from '../../../components/ResourceCard';
-import SidebarSection from '../../../components/SidebarSection';
-import { extractDriveId } from '../../firebaseConfig'; // Adjust path as needed
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import ResourceCard from '../../components/ResourceCard';
+import SidebarSection from '../../components/SidebarSection';
+import { extractDriveId, db } from '../../firebase'; // Adjust this path to your Firebase config file
+import { collection, getDocs } from 'firebase/firestore';
 
-// AdSense Banner Component (reusable)
 const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
   useEffect(() => {
     try {
@@ -36,7 +36,6 @@ const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
   );
 };
 
-// Main ResourceDetail Component
 const ResourceDetail = ({ allResources }) => {
   const router = useRouter();
   const { classLevel, type, documentId } = router.query;
@@ -44,7 +43,6 @@ const ResourceDetail = ({ allResources }) => {
   const [relatedResources, setRelatedResources] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Auto-generate short description
   const generateShortDescription = (resource) => {
     return `${resource.subject} ${resource.class} ${resource.type.replace('-', ' ')} for ${resource.year}. Key topics include ${resource.description.split('.')[0].toLowerCase()}.`;
   };
@@ -89,7 +87,6 @@ const ResourceDetail = ({ allResources }) => {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">Resource not found</div>;
   }
 
-  // Generate tags from resource metadata
   const tags = [resource.subject, resource.class, resource.board, resource.year].filter(tag => tag && tag !== 'N/A');
 
   return (
@@ -98,10 +95,8 @@ const ResourceDetail = ({ allResources }) => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Content */}
           <div className="lg:col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-              {/* Resource Header */}
               <div className="border-b pb-6 mb-6 border-gray-200 dark:border-gray-700">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -128,10 +123,8 @@ const ResourceDetail = ({ allResources }) => {
                 <p className="text-lg text-gray-700 dark:text-gray-300 mt-4">{generateShortDescription(resource)}</p>
               </div>
 
-              {/* AdSense Banner */}
               <AdSenseBanner slot="resource-top-banner" format="horizontal" />
 
-              {/* Embedded Preview */}
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Preview Document</h2>
                 <div className="rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 shadow-sm">
@@ -149,7 +142,6 @@ const ResourceDetail = ({ allResources }) => {
                 </div>
               </div>
 
-              {/* Download Button with Description */}
               <div className="mb-8">
                 <a 
                   href={resource.downloadUrl || resource.url} 
@@ -162,10 +154,8 @@ const ResourceDetail = ({ allResources }) => {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Click to download the full resource for offline study. File size may vary based on content.</p>
               </div>
 
-              {/* AdSense Banner */}
               <AdSenseBanner slot="resource-bottom-banner" format="horizontal" />
 
-              {/* Related Resources Widget */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Related Resources</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -177,9 +167,7 @@ const ResourceDetail = ({ allResources }) => {
             </div>
           </div>
 
-          {/* Right Sidebar */}
           <div className="lg:col-span-1">
-            {/* Categories Section */}
             <SidebarSection
               title="Subject Categories"
               subtitle="Explore Related Subjects"
@@ -189,7 +177,6 @@ const ResourceDetail = ({ allResources }) => {
               items={[{ name: resource.subject, count: allResources.filter(r => r.subject === resource.subject).length, href: `/subject/${resource.subject.toLowerCase()}` }]}
               viewAllLink="/all-subjects"
             />
-            {/* AdSense Banner */}
             <AdSenseBanner slot="resource-sidebar-banner" format="vertical" />
           </div>
         </div>
@@ -200,25 +187,13 @@ const ResourceDetail = ({ allResources }) => {
   );
 };
 
-// getStaticProps to fetch all resources
 export async function getStaticProps() {
   try {
     let allData = [];
-    const categoryCounts = {
-      School: { count: 0, classes: {} },
-      College: { count: 0, classes: {} },
-      Cambridge: { count: 0, classes: {} },
-      'Entry Test': { count: 0, classes: {} },
-      University: { count: 0, classes: {} },
-      'Competition Exam': { count: 0, classes: {} },
-      General: { count: 0, contentTypes: {} },
-    };
-
     for (const collectionName of allCollections) {
       try {
         const collRef = collection(db, collectionName);
         const snapshot = await getDocs(collRef);
-
         if (!snapshot.empty) {
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -253,7 +228,6 @@ export async function getStaticProps() {
         console.error(`Error fetching collection ${collectionName}:`, error);
       }
     }
-
     return {
       props: {
         allResources: allData,
@@ -271,13 +245,11 @@ export async function getStaticProps() {
   }
 }
 
-// getStaticPaths for dynamic routes
 export async function getStaticPaths() {
   const paths = allCollections.flatMap(collectionName => {
-    const { category, classLevel, contentType } = parseCollectionName(collectionName);
-    return [{ params: { class: classLevel || 'general', type: contentType.toLowerCase(), documentId: 'doc1' } }]; // Placeholder documentId
+    const { classLevel, contentType } = parseCollectionName(collectionName);
+    return [{ params: { class: classLevel || 'general', type: contentType.toLowerCase(), documentId: 'doc1' } }];
   });
-
   return {
     paths,
     fallback: 'blocking',
