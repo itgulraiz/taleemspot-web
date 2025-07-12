@@ -23,25 +23,11 @@ const ResourceCard = memo(({ resource }) => {
     .join(' ')
     .trim() || 'N/A';
 
-  // Dynamic label for the button area based on resource.type
-  const buttonLabel = resource.type === 'PastPapers'
-    ? [
-        resource.class,
-        resource.type,
-        resource.board,
-        resource.year,
-        resource.subject
-      ]
-        .filter(Boolean) // Remove undefined or empty values
-        .join(' - ')
-        .trim() || 'N/A'
-    : [
-        resource.class,
-        resource.type
-      ]
-        .filter(Boolean) // Remove undefined or empty values
-        .join(' - ')
-        .trim() || 'N/A';
+  // Fallback for bottom badges if year or board is "N/A"
+  const bottomBadges = [
+    resource.year && resource.year !== 'N/A' ? resource.year : (resource.type || 'Type N/A'),
+    resource.board && resource.board !== 'N/A' ? resource.board : (resource.subject || 'Subject N/A')
+  ].filter(Boolean);
 
   return (
     <div 
@@ -79,26 +65,20 @@ const ResourceCard = memo(({ resource }) => {
         
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {[
-              resource.year && resource.year !== 'N/A' ? resource.year : (resource.type || 'Type N/A'),
-              resource.board && resource.board !== 'N/A' ? resource.board : (resource.subject || 'Subject N/A')
-            ]
-              .filter(Boolean)
-              .map((badge, index) => (
-                <span
-                  key={index}
-                  className={`bg-gradient-to-r ${
-                    index === 0 ? 'from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-800 dark:text-green-300' 
-                    : 'from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-300'
-                  } text-xs px-3 py-1 rounded-full font-medium`}
-                >
-                  {badge}
-                </span>
-              ))}
+            {bottomBadges.map((badge, index) => (
+              <span
+                key={index}
+                className={`bg-gradient-to-r ${
+                  index === 0 ? 'from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-800 dark:text-green-300' 
+                  : 'from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-300'
+                } text-xs px-3 py-1 rounded-full font-medium`}
+              >
+                {badge}
+              </span>
+            ))}
           </div>
           
           <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-medium group-hover:text-green-700 dark:group-hover:text-green-300">
-            <span className="mr-2 text-gray-600 dark:text-gray-400 text-xs">{buttonLabel}</span>
             <ExternalLink className="h-3 w-3 mr-1" />
             <span>Open</span>
           </div>
