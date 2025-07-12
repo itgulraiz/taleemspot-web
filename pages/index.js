@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Search, BookOpen, Users, Star, TrendingUp, Calendar, Award, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
@@ -315,6 +315,33 @@ const parseCollectionName = (collectionName) => {
   return { category: 'General', province: null, classLevel: null, contentType: collectionName };
 };
 
+// Helper function to format address for cards
+const formatResourceAddress = (resource) => {
+  const parts = [];
+  
+  if (resource.category && resource.category !== 'General') {
+    parts.push(resource.category);
+  }
+  
+  if (resource.class && resource.class !== 'General') {
+    parts.push(`Class ${resource.class}`);
+  }
+  
+  if (resource.subject && resource.subject !== 'General') {
+    parts.push(resource.subject);
+  }
+  
+  if (resource.type) {
+    parts.push(resource.type);
+  }
+  
+  if (resource.province) {
+    parts.push(resource.province);
+  }
+  
+  return parts.length > 0 ? parts.join(' • ') : 'General Resource';
+};
+
 export async function getStaticProps() {
   try {
     let allData = [];
@@ -330,6 +357,9 @@ export async function getStaticProps() {
       'Competition Exam': { count: 0, classes: {} },
       General: { count: 0, contentTypes: {} },
     };
+
+    // Track resource views/popularity for trending posts
+    let resourcePopularity = {};
 
     for (const collectionName of allCollections) {
       try {
@@ -377,7 +407,17 @@ export async function getStaticProps() {
                     author: data.userInfo?.authorName || getRandomAuthor(),
                     category,
                     province,
+                    views: data.views || Math.floor(Math.random() * 1000) + 100, // Random views for demo
+                    likes: data.likes || Math.floor(Math.random() * 50) + 10, // Random likes for demo
+                    downloads: data.downloads || Math.floor(Math.random() * 200) + 50, // Random downloads for demo
                   };
+                  
+                  // Add formatted address
+                  resource.address = formatResourceAddress(resource);
+                  
+                  // Calculate popularity score for trending
+                  resource.popularityScore = (resource.views * 1) + (resource.likes * 3) + (resource.downloads * 2);
+                  
                   allData.push(resource);
                 }
               });
@@ -402,7 +442,14 @@ export async function getStaticProps() {
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
+                views: data.views || Math.floor(Math.random() * 1000) + 100,
+                likes: data.likes || Math.floor(Math.random() * 50) + 10,
+                downloads: data.downloads || 0,
               };
+              
+              resource.address = formatResourceAddress(resource);
+              resource.popularityScore = (resource.views * 1) + (resource.likes * 3);
+              
               allData.push(resource);
             } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
               // Handle quiz resources
@@ -426,7 +473,14 @@ export async function getStaticProps() {
                 category,
                 province,
                 quiz: data.academicInfo.quiz,
+                views: data.views || Math.floor(Math.random() * 500) + 50,
+                likes: data.likes || Math.floor(Math.random() * 30) + 5,
+                downloads: data.downloads || 0,
               };
+              
+              resource.address = formatResourceAddress(resource);
+              resource.popularityScore = (resource.views * 1) + (resource.likes * 3);
+              
               allData.push(resource);
             }
           });
@@ -503,6 +557,15 @@ export async function getStaticProps() {
     const ntsCount = allData.filter((item) => item.collection.includes('NTS')).length;
     const ppscCount = allData.filter((item) => item.collection.includes('PPSC')).length;
 
+    // Generate counts for Cambridge
+    const oLevelCount = allData.filter((item) => item.collection.includes('OLevel')).length;
+    const aLevelCount = allData.filter((item) => item.collection.includes('ALevel')).length;
+
+    // Get top trending posts based on popularity score
+    const trendingPosts = allData
+      .sort((a, b) => b.popularityScore - a.popularityScore)
+      .slice(0, 4);
+
     // Featured data: Latest 8 resources sorted by upload date
     const featuredData = allData
       .sort((a, b) => (b.year || '9999') - (a.year || '9999'))
@@ -523,6 +586,9 @@ export async function getStaticProps() {
         cssCount,
         ntsCount,
         ppscCount,
+        oLevelCount,
+        aLevelCount,
+        trendingPosts,
       },
       revalidate: 86400,
     };
@@ -543,6 +609,9 @@ export async function getStaticProps() {
         cssCount: 0,
         ntsCount: 0,
         ppscCount: 0,
+        oLevelCount: 0,
+        aLevelCount: 0,
+        trendingPosts: [],
       },
       revalidate: 3600,
     };
@@ -566,8 +635,8 @@ const NewsCard = memo(({ news, isActive, onClick }) => (
           {news.title}
         </h4>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-          <Calendar className="h-3 w-3 mr-1" />
-          {news.date}
+          <TrendingUp className="h-3 w-3 mr-1" />
+          {news.views} views • {news.likes} likes
         </p>
       </div>
     </div>
@@ -591,44 +660,15 @@ const TaleemSpot = ({
   cssCount,
   ntsCount,
   ppscCount,
+  oLevelCount,
+  aLevelCount,
+  trendingPosts,
 }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [filteredData, setFilteredData] = useState(resources || []);
   const [activeNews, setActiveNews] = useState(0);
-
-  // Updated news data to reflect broader categories
-  const latestNews = useMemo(() => [
-    {
-      id: 1,
-      title: '9th Class Biology 2024 - Lahore Board',
-      date: 'Just Now',
-      content: 'Latest 9th Class Biology past paper from Lahore Board for 2024 examination is now available for download.',
-      type: 'trending',
-    },
-    {
-      id: 2,
-      title: 'CSS 2024 General Knowledge Notes',
-      date: '2 hours ago',
-      content: 'Comprehensive notes for CSS 2024 General Knowledge section now available.',
-      type: 'new',
-    },
-    {
-      id: 3,
-      title: 'MDCAT 2024 Preparation Guide',
-      date: '5 hours ago',
-      content: 'Complete preparation guide and past papers for MDCAT 2024 entrance test.',
-      type: 'popular',
-    },
-    {
-      id: 4,
-      title: 'O Level Mathematics Past Papers 2024',
-      date: '1 day ago',
-      content: 'Access the latest O Level Mathematics past papers for 2024.',
-      type: 'new',
-    },
-  ], []);
 
   // Search functionality
   useEffect(() => {
@@ -699,11 +739,11 @@ const TaleemSpot = ({
   // Auto-rotate news
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveNews((prev) => (prev + 1) % latestNews.length);
+      setActiveNews((prev) => (prev + 1) % trendingPosts.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [latestNews.length]);
+  }, [trendingPosts.length]);
 
   return (
     <>
@@ -725,7 +765,7 @@ const TaleemSpot = ({
         <meta property="og:url" content="https://taleemspot.com" />
         <meta property="og:type" content="website" />
         <meta
-          property="og:image"
+                    property="og:image"
           content="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9"
         />
         <meta name="twitter:card" content="summary_large_image" />
@@ -769,21 +809,22 @@ const TaleemSpot = ({
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Sidebar */}
             <div className="lg:col-span-1">
-              {/* Latest News Section */}
+              {/* Top Trending Posts Section */}
               <SidebarSection
-                title="Latest News"
-                subtitle={`Stay Up to Date with TaleemSpot - ${new Date().getDate()}`}
+                title="Trending Posts"
+                subtitle={`Most Popular Resources - ${new Date().toLocaleDateString()}`}
                 icon={TrendingUp}
                 colorScheme="red"
                 showSerialNumbers={true}
-                items={latestNews.map((news, index) => ({
-                  name: news.title,
-                  badge: index === 0 ? 'Trending News' : null,
-                  href: '#',
+                items={trendingPosts.map((post, index) => ({
+                  name: post.title,
+                  count: `${post.views} views`,
+                  badge: index === 0 ? 'Most Popular' : null,
+                  href: post.path,
                 }))}
-                viewAllLink="/all-news"
+                viewAllLink="/trending"
                 badgeColors={{
-                  'Trending News': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
+                  'Most Popular': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
                 }}
               />
 
@@ -802,6 +843,20 @@ const TaleemSpot = ({
                     href: `/${cat.id}`,
                   }))}
                 viewAllLink="/all-classes"
+              />
+
+              {/* Cambridge Section */}
+              <SidebarSection
+                title="Cambridge"
+                subtitle="O Level & A Level Resources"
+                icon={Award}
+                colorScheme="blue"
+                showSerialNumbers={true}
+                items={[
+                  { name: 'O Level', count: oLevelCount, href: '/Cambridge-OLevel' },
+                  { name: 'A Level', count: aLevelCount, href: '/Cambridge-ALevel' },
+                ]}
+                viewAllLink="/cambridge"
               />
 
               {/* Entry Test Section */}
