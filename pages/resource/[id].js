@@ -7,7 +7,7 @@ import Footer from '../components/Footer';
 
 const ResourceDetail = () => {
   const router = useRouter();
-  const { classLevel, type, documentId } = router.query; // Updated to match new URL structure
+  const { classLevel, type, documentId } = router.query; // Matches URL structure: /${class}/${type}/${documentId}
   const [resource, setResource] = useState(null);
   const [relatedResources, setRelatedResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,33 +56,13 @@ const ResourceDetail = () => {
 
   // Categories data
   const categoriesData = [
-    {
-      id: 1,
-      name: "Biology",
-      count: 24,
-      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
-    },
-    {
-      id: 2,
-      name: "Physics",
-      count: 18,
-      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
-    },
-    {
-      id: 3,
-      name: "Chemistry",
-      count: 15,
-      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
-    },
-    {
-      id: 4,
-      name: "Mathematics",
-      count: 22,
-      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
-    }
+    { id: 1, name: "Biology", count: 24, icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" },
+    { id: 2, name: "Physics", count: 18, icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" },
+    { id: 3, name: "Chemistry", count: 15, icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" },
+    { id: 4, name: "Mathematics", count: 22, icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" },
   ];
 
-  // Static data for demonstration (updated to include documentId)
+  // Static data with author and image
   const staticData = [
     {
       id: 1,
@@ -96,13 +76,15 @@ const ResourceDetail = () => {
       documentId: "doc1",
       url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
       driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
-      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9",
+      author: "Muhammad Ali",
+      authorImage: "https://example.com/author1.jpg", // Example author image URL
     },
     {
       id: 2,
       title: "9th Class Physics Chapter 2 - Kinematics",
       description: "Detailed notes on motion, velocity, acceleration, and equations of motion with solved examples.",
-      subject: "Physics", 
+      subject: "Physics",
       class: "9th",
       board: "Punjab",
       year: "2024",
@@ -110,7 +92,9 @@ const ResourceDetail = () => {
       documentId: "doc2",
       url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
       driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
-      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9",
+      author: "Fatima Ahmed",
+      authorImage: null, // No image available
     },
     {
       id: 3,
@@ -118,13 +102,15 @@ const ResourceDetail = () => {
       description: "Basic concepts of chemistry, atomic structure, and chemical bonding explained in simple language.",
       subject: "Chemistry",
       class: "9th",
-      board: "Punjab", 
+      board: "Punjab",
       year: "2024",
       type: "notes",
       documentId: "doc3",
       url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
       driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
-      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9",
+      author: "Ahmed Hassan",
+      authorImage: "https://example.com/author3.jpg",
     },
     {
       id: 4,
@@ -138,7 +124,9 @@ const ResourceDetail = () => {
       documentId: "doc4",
       url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
       driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
-      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9",
+      author: "Ayesha Malik",
+      authorImage: null,
     },
     {
       id: 5,
@@ -152,7 +140,9 @@ const ResourceDetail = () => {
       documentId: "doc5",
       url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
       driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
-      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9",
+      author: "Hassan Raza",
+      authorImage: "https://example.com/author5.jpg",
     },
     {
       id: 6,
@@ -166,8 +156,10 @@ const ResourceDetail = () => {
       documentId: "doc6",
       url: "https://drive.google.com/uc?export=download&id=1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
       driveId: "1p6G83N3CbAiwR8T_A4Q2nwDSdfa_yR9e",
-      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
-    }
+      thumbnail: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9",
+      author: "Zainab Sheikh",
+      authorImage: null,
+    },
   ];
 
   // Toggle dropdown menu
@@ -179,9 +171,13 @@ const ResourceDetail = () => {
     }
   };
 
+  // Auto-generate short description
+  const generateShortDescription = (resource) => {
+    return `${resource.subject} ${resource.class} ${resource.type.replace('-', ' ')} for ${resource.year}. Key topics include ${resource.description.split('.')[0].toLowerCase()}.`;
+  };
+
   useEffect(() => {
     if (classLevel && type && documentId) {
-      // Simulate API fetch based on new URL structure
       setTimeout(() => {
         const foundResource = staticData.find(item => 
           item.class.toLowerCase() === classLevel.toLowerCase() && 
@@ -190,11 +186,9 @@ const ResourceDetail = () => {
         ) || staticData[0];
         setResource(foundResource);
         
-        // Get related resources of same subject
         const related = staticData
-          .filter(item => item.subject === foundResource.subject && 
-            item.documentId !== documentId)
-          .slice(0, 4);
+          .filter(item => item.subject === foundResource.subject && item.documentId !== documentId)
+          .slice(0, 4); // Limit to 4 related resources
         setRelatedResources(related);
         setLoading(false);
       }, 500);
@@ -248,6 +242,9 @@ const ResourceDetail = () => {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50">Resource not found</div>;
   }
 
+  // Generate tags from resource metadata
+  const tags = [resource.subject, resource.class, resource.board, resource.year].filter(tag => tag && tag !== 'N/A');
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header navMenus={navMenus} setIsMenuOpen={setIsMenuOpen} isMenuOpen={isMenuOpen} setActiveTab={setActiveTab} activeTab={activeTab} setOpenDropdown={setOpenDropdown} openDropdown={openDropdown} />
@@ -265,29 +262,29 @@ const ResourceDetail = () => {
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold text-gray-800">{resource.title}</h1>
+                    {resource.author && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        By {resource.author} {resource.authorImage && (
+                          <img src={resource.authorImage} alt={`${resource.author}'s profile`} className="inline w-6 h-6 rounded-full ml-2" />
+                        )}
+                      </p>
+                    )}
                     <div className="flex flex-wrap gap-2 mt-2">
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                        {resource.subject}
-                      </span>
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        {resource.class} Class
-                      </span>
-                      <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                        {resource.board}
-                      </span>
-                      <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
-                        {resource.year}
-                      </span>
+                      {tags.map((tag, index) => (
+                        <span key={index} className="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <p className="text-lg text-gray-700 mt-4">{resource.description}</p>
+                <p className="text-lg text-gray-700 mt-4">{generateShortDescription(resource)}</p>
               </div>
 
               {/* AdSense Banner */}
               <AdSenseBanner slot="resource-top-banner" format="horizontal" />
 
-              {/* Google Drive Embed */}
+              {/* Embedded Preview */}
               <div className="mb-8">
                 <h2 className="text-xl font-semibold mb-4">Preview Document</h2>
                 <div className="rounded-lg overflow-hidden border border-gray-300 shadow-sm">
@@ -301,7 +298,7 @@ const ResourceDetail = () => {
                 </div>
               </div>
 
-              {/* Download Button */}
+              {/* Download Button with Description */}
               <div className="mb-8">
                 <a 
                   href={resource.url} 
@@ -311,30 +308,29 @@ const ResourceDetail = () => {
                   <Download className="h-5 w-5" />
                   <span>Download PDF</span>
                 </a>
+                <p className="text-sm text-gray-600 mt-2">Click to download the full resource for offline study. File size may vary based on content.</p>
               </div>
 
               {/* AdSense Banner */}
               <AdSenseBanner slot="resource-bottom-banner" format="horizontal" />
 
-              {/* Related Resources */}
-              <div>
+              {/* Related Resources Widget */}
+              <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="text-xl font-semibold mb-4">Related Resources</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {relatedResources.map(item => (
                     <Link 
                       key={item.id} 
                       href={`/${item.class.toLowerCase()}/${item.type}/${item.documentId}`}
-                      className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow p-4"
+                      className="bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow p-3 flex items-center space-x-3"
                     >
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                          <BookOpen className="h-5 w-5 text-green-600" />
-                        </div>
-                        <h3 className="font-medium text-gray-800 text-sm line-clamp-2">{item.title}</h3>
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-green-600" />
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {item.subject} • {item.class} Class
-                      </p>
+                      <div>
+                        <h3 className="font-medium text-gray-800 text-sm line-clamp-1">{item.title}</h3>
+                        <p className="text-xs text-gray-600">{item.subject} • {item.class} Class</p>
+                      </div>
                     </Link>
                   ))}
                 </div>
