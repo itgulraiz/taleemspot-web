@@ -37,21 +37,6 @@ const getRandomAuthor = () => {
   return authors[Math.floor(Math.random() * authors.length)];
 };
 
-// Function to generate a 7-character unique ID from documentId
-function generateShortId(docId, index) {
-  // Simple hash function to create a unique string
-  let hash = 0;
-  for (let i = 0; i < docId.length; i++) {
-    hash = ((hash << 5) - hash) + docId.charCodeAt(i);
-    hash |= 0; // Convert to 32-bit integer
-  }
-  // Incorporate index to avoid collisions for multiple subjects
-  hash += index;
-  // Convert to base36 and take first 7 characters
-  const shortId = Math.abs(hash).toString(36).substring(0, 7).padEnd(7, '0');
-  return shortId;
-}
-
 // All collections from Selection.txt
 const allCollections = [
   'AJKPSCNotes', 'AJKPSCPastPapers', 'AJKPSCQuiz', 'AJKPSCSyllabus', 'AJKPSCTest', 'AJKPSCTextBooks',
@@ -177,7 +162,7 @@ const allCollections = [
   'KhyberPakhtunkhwaMDCATPastPapers', 'KhyberPakhtunkhwaMDCATQuiz', 'KhyberPakhtunkhwaMDCATResult',
   'KhyberPakhtunkhwaMDCATRollNoSlip', 'KhyberPakhtunkhwaMDCATSyllabus', 'KhyberPakhtunkhwaMDCATTest',
   'KhyberPakhtunkhwaOtherUniversityGuessPapers', 'KhyberPakhtunkhwaOtherUniversityNotes',
-  'KhyberPakhtunkhwaOtherUniversityPastPapers', 'KhyberPakhtascularUniversityQuiz',
+  'KhyberPakhtunkhwaOtherUniversityPastPapers', 'KhyberPakhtunkhwaOtherUniversityQuiz',
   'KhyberPakhtunkhwaOtherUniversitySyllabus', 'KhyberPakhtunkhwaOtherUniversityTest',
   'KhyberPakhtunkhwaOtherUniversityTextBooks', 'KhyberPakhtunkhwaUniversityEntryTestGuessPapers',
   'KhyberPakhtunkhwaUniversityEntryTestNotes', 'KhyberPakhtunkhwaUniversityEntryTestPastPapers',
@@ -330,12 +315,6 @@ const parseCollectionName = (collectionName) => {
   return { category: 'General', province: null, classLevel: null, contentType: collectionName };
 };
 
-// Helper function to sanitize URL segments
-function sanitizeSegment(segment) {
-  if (!segment || segment === 'N/A') return 'general';
-  return segment.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-}
-
 export async function getStaticProps() {
   try {
     let allData = [];
@@ -346,13 +325,11 @@ export async function getStaticProps() {
       School: { count: 0, classes: {} },
       College: { count: 0, classes: {} },
       Cambridge: { count: 0, classes: {} },
-      'Competition Exam': { count: 0, classes: {} },
       'Entry Test': { count: 0, classes: {} },
       University: { count: 0, classes: {} },
+      'Competition Exam': { count: 0, classes: {} },
       General: { count: 0, contentTypes: {} },
     };
-    // Keep track of used short IDs to avoid collisions
-    const usedShortIds = new Set();
 
     for (const collectionName of allCollections) {
       try {
@@ -381,45 +358,6 @@ export async function getStaticProps() {
               subjects.forEach((subject, index) => {
                 if (data.content?.fileUrl) {
                   const driveId = extractDriveId(data.content.fileUrl);
-                  // Generate 7-character unique short ID
-                  let shortId = generateShortId(doc.id, index);
-                  let attempt = 0;
-
-                  // Construct path based on contentType
-                  const sanitizedClass = sanitizeSegment(classLevel);
-                  const sanitizedType = sanitizeSegment(contentType);
-                  const sanitizedProvince = sanitizeSegment(province);
-                  const sanitizedBoard = sanitizeSegment(data.academicInfo?.board);
-                  const sanitizedYear = sanitizeSegment(data.academicInfo?.year);
-                  const sanitizedSubject = sanitizeSegment(subject);
-
-                  let path;
-                  if (contentType === 'Gazette') {
-                    path = `/${sanitizedClass}/${sanitizedType}/${sanitizedBoard}/${sanitizedYear}/${shortId}`;
-                  } else if (contentType === 'PastPapers') {
-                    path = `/${sanitizedClass}/${sanitizedType}/${sanitizedProvince}/${sanitizedBoard}/${sanitizedYear}/${sanitizedSubject}/${shortId}`;
-                  } else if (contentType === 'Result') {
-                    path = `/${sanitizedClass}/${sanitizedType}/${sanitizedProvince}/${sanitizedYear}/${sanitizedBoard}/${shortId}`;
-                  } else {
-                    path = `/${sanitizedClass}/${sanitizedType}/${sanitizedSubject}/${shortId}`;
-                  }
-
-                  // Ensure uniqueness of path
-                  while (usedShortIds.has(path)) {
-                    attempt++;
-                    shortId = generateShortId(doc.id + attempt, index);
-                    if (contentType === 'Gazette') {
-                      path = `/${sanitizedClass}/${sanitizedType}/${sanitizedBoard}/${sanitizedYear}/${shortId}`;
-                    } else if (contentType === 'PastPapers') {
-                      path = `/${sanitizedClass}/${sanitizedType}/${sanitizedProvince}/${sanitizedBoard}/${sanitizedYear}/${sanitizedSubject}/${shortId}`;
-                    } else if (contentType === 'Result') {
-                      path = `/${sanitizedClass}/${sanitizedType}/${sanitizedProvince}/${sanitizedYear}/${sanitizedBoard}/${shortId}`;
-                    } else {
-                      path = `/${sanitizedClass}/${sanitizedType}/${sanitizedSubject}/${shortId}`;
-                    }
-                  }
-                  usedShortIds.add(path);
-
                   const resource = {
                     id: `${collectionName}-${doc.id}-${index}`,
                     title: data.content.title || `${category} ${classLevel || ''} ${contentType} - ${subject}`,
@@ -435,34 +373,18 @@ export async function getStaticProps() {
                     collection: collectionName,
                     documentId: doc.id,
                     itemIndex: index,
-                    path,
+                    // Updated path to class/type/documentId format
+                    path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                     author: data.userInfo?.authorName || getRandomAuthor(),
                     category,
                     province,
-                    authorImage: data.userInfo?.authorImage || null,
+                    authorImage: data.userInfo?.authorImage || null, // Added for potential author image
                   };
                   allData.push(resource);
                 }
               });
             } else if (data.metadata?.resourceType === 'Lecture' && data.content?.youtubeUrl) {
               // Handle lecture resources
-              let shortId = generateShortId(doc.id, 0);
-              let attempt = 0;
-
-              // Construct path for lectures
-              const sanitizedClass = sanitizeSegment(classLevel);
-              const sanitizedType = sanitizeSegment(contentType);
-              const sanitizedSubject = sanitizeSegment(data.academicInfo?.subject || 'General');
-              let path = `/${sanitizedClass}/${sanitizedType}/${sanitizedSubject}/${shortId}`;
-
-              // Ensure uniqueness of path
-              while (usedShortIds.has(path)) {
-                attempt++;
-                shortId = generateShortId(doc.id + attempt, 0);
-                path = `/${sanitizedClass}/${sanitizedType}/${sanitizedSubject}/${shortId}`;
-              }
-              usedShortIds.add(path);
-
               const resource = {
                 id: `${collectionName}-${doc.id}`,
                 title: data.content.title || `${category} ${classLevel || ''} ${contentType}`,
@@ -478,32 +400,16 @@ export async function getStaticProps() {
                 collection: collectionName,
                 documentId: doc.id,
                 itemIndex: 0,
-                path,
+                // Updated path to class/type/documentId format
+                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
-                authorImage: data.userInfo?.authorImage || null,
+                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
               };
               allData.push(resource);
             } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
               // Handle quiz resources
-              let shortId = generateShortId(doc.id, 0);
-              let attempt = 0;
-
-              // Construct path for quizzes
-              const sanitizedClass = sanitizeSegment(classLevel);
-              const sanitizedType = sanitizeSegment(contentType);
-              const sanitizedSubject = sanitizeSegment(data.academicInfo?.subject || 'General');
-              let path = `/${sanitizedClass}/${sanitizedType}/${sanitizedSubject}/${shortId}`;
-
-              // Ensure uniqueness of path
-              while (usedShortIds.has(path)) {
-                attempt++;
-                shortId = generateShortId(doc.id + attempt, 0);
-                path = `/${sanitizedClass}/${sanitizedType}/${sanitizedSubject}/${shortId}`;
-              }
-              usedShortIds.add(path);
-
               const resource = {
                 id: `${collectionName}-${doc.id}`,
                 title: data.content.title || `${category} ${classLevel || ''} Quiz`,
@@ -519,11 +425,12 @@ export async function getStaticProps() {
                 collection: collectionName,
                 documentId: doc.id,
                 itemIndex: 0,
-                path,
+                // Updated path to class/type/documentId format
+                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
-                authorImage: data.userInfo?.authorImage || null,
+                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
                 quiz: data.academicInfo.quiz,
               };
               allData.push(resource);
@@ -1003,7 +910,7 @@ const TaleemSpot = ({
                 icon={BookOpen}
                 colorScheme="gray"
                 showSerialNumbers={true}
-                items=[
+                items={[
                   { name: 'Urdu Calligraphy', count: '10+', href: '/UrduCalligraphy' },
                   { name: 'English Calligraphy', count: '15+', href: '/EnglishCalligraphy' },
                   { name: 'English Language', count: '20+', href: '/EnglishLanguage' },
