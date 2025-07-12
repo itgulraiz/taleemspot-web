@@ -4,10 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
-import ResourceCard from '../../components/ResourceCard';
-import SidebarSection from '../../components/SidebarSection';
+import ResourceCard from '../../components/ResourceCard'; // Keep this if it works, remove if it causes errors
 import { extractDriveId, db } from '../../firebase'; // Adjust this path to your Firebase config file
 import { collection, getDocs } from 'firebase/firestore';
 
@@ -91,11 +88,11 @@ const ResourceDetail = ({ allResources }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
+      {/* Removed Header */}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1">
+          <div className="col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
               <div className="border-b pb-6 mb-6 border-gray-200 dark:border-gray-700">
                 <div className="flex items-center space-x-3 mb-4">
@@ -167,22 +164,11 @@ const ResourceDetail = ({ allResources }) => {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
-            <SidebarSection
-              title="Subject Categories"
-              subtitle="Explore Related Subjects"
-              icon={BookOpen}
-              colorScheme="green"
-              showSerialNumbers={false}
-              items={[{ name: resource.subject, count: allResources.filter(r => r.subject === resource.subject).length, href: `/subject/${resource.subject.toLowerCase()}` }]}
-              viewAllLink="/all-subjects"
-            />
-            <AdSenseBanner slot="resource-sidebar-banner" format="vertical" />
-          </div>
+          {/* Removed Sidebar */}
         </div>
       </div>
 
-      <Footer />
+      {/* Removed Footer */}
     </div>
   );
 };
