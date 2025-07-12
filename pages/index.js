@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, memo } from 'react';
-import { Search, BookOpen, Users, Star, TrendingUp, Calendar, Award, User } from 'lucide-react';
+import { Search, BookOpen, Users, Star, TrendingUp, Calendar, Award } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
@@ -213,7 +213,7 @@ const allCollections = [
   'VirtualUniversityRollNoSlip', 'VirtualUniversitySyllabus', 'VirtualUniversityTest', 'VirtualUniversityTextBooks',
 ];
 
-// Category definitions
+// Category definitions with restricted content types for PairingScheme, GuessPapers, and Gazette
 const categoryDefinitions = {
   School: {
     provinces: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
@@ -239,7 +239,7 @@ const categoryDefinitions = {
   },
   University: {
     classes: ['BDS', 'MBBS', 'AllamaIqbalOpenUniversity', 'VirtualUniversity', 'OtherUniversity'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'RollNoSlip'],
+    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'RollNoSlip'],
     provincesFor: {
       OtherUniversity: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
     },
@@ -249,7 +249,7 @@ const categoryDefinitions = {
     contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Quiz', 'Test', 'Syllabus', 'Result'],
   },
   General: {
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'DateSheet', 'Gazette', 'PairingScheme', 'UrduCalligraphy', 'EnglishCalligraphy', 'EnglishLanguage'],
+    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'UrduCalligraphy', 'EnglishCalligraphy', 'EnglishLanguage'],
   },
 };
 
@@ -298,7 +298,7 @@ const parseCollectionName = (collectionName) => {
   const provinces = categoryDefinitions.School.provinces;
   const schoolClasses = categoryDefinitions.School.classes;
   const collegeClasses = categoryDefinitions.College.classes;
-  const contentTypes = [...categoryDefinitions.School.contentTypes, ...categoryDefinitions.College.contentTypes];
+  const contentTypes = [...new Set([...categoryDefinitions.School.contentTypes, ...categoryDefinitions.College.contentTypes])];
 
   for (const province of provinces) {
     if (collectionName.startsWith(province)) {
@@ -306,6 +306,10 @@ const parseCollectionName = (collectionName) => {
       const cls = [...schoolClasses, ...collegeClasses].find((c) => remaining.startsWith(c));
       if (cls) {
         contentType = remaining.replace(cls, '');
+        // Restrict PairingScheme, GuessPapers, and Gazette to 9th, 10th, 11th, 12th
+        if (['PairingScheme', 'GuessPapers', 'Gazette'].includes(contentType) && !['9th', '10th', '11th', '12th'].includes(cls)) {
+          return null; // Skip invalid collections
+        }
         category = schoolClasses.includes(cls) ? 'School' : 'College';
         return { category, province, classLevel: cls, contentType };
       }
@@ -313,33 +317,6 @@ const parseCollectionName = (collectionName) => {
   }
 
   return { category: 'General', province: null, classLevel: null, contentType: collectionName };
-};
-
-// Helper function to format address for cards
-const formatResourceAddress = (resource) => {
-  const parts = [];
-  
-  if (resource.category && resource.category !== 'General') {
-    parts.push(resource.category);
-  }
-  
-  if (resource.class && resource.class !== 'General') {
-    parts.push(`Class ${resource.class}`);
-  }
-  
-  if (resource.subject && resource.subject !== 'General') {
-    parts.push(resource.subject);
-  }
-  
-  if (resource.type) {
-    parts.push(resource.type);
-  }
-  
-  if (resource.province) {
-    parts.push(resource.province);
-  }
-  
-  return parts.length > 0 ? parts.join(' • ') : 'General Resource';
 };
 
 export async function getStaticProps() {
@@ -358,16 +335,15 @@ export async function getStaticProps() {
       General: { count: 0, contentTypes: {} },
     };
 
-    // Track resource views/popularity for trending posts
-    let resourcePopularity = {};
-
     for (const collectionName of allCollections) {
       try {
         const collRef = collection(db, collectionName);
         const snapshot = await getDocs(collRef);
 
         if (!snapshot.empty) {
-          const { category, province, classLevel, contentType } = parseCollectionName(collectionName);
+          const parsed = parseCollectionName(collectionName);
+          if (!parsed) continue; // Skip invalid collections
+          const { category, province, classLevel, contentType } = parsed;
 
           // Update category counts
           if (category in categoryCounts) {
@@ -407,17 +383,7 @@ export async function getStaticProps() {
                     author: data.userInfo?.authorName || getRandomAuthor(),
                     category,
                     province,
-                    views: data.views || Math.floor(Math.random() * 1000) + 100, // Random views for demo
-                    likes: data.likes || Math.floor(Math.random() * 50) + 10, // Random likes for demo
-                    downloads: data.downloads || Math.floor(Math.random() * 200) + 50, // Random downloads for demo
                   };
-                  
-                  // Add formatted address
-                  resource.address = formatResourceAddress(resource);
-                  
-                  // Calculate popularity score for trending
-                  resource.popularityScore = (resource.views * 1) + (resource.likes * 3) + (resource.downloads * 2);
-                  
                   allData.push(resource);
                 }
               });
@@ -442,14 +408,7 @@ export async function getStaticProps() {
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
-                views: data.views || Math.floor(Math.random() * 1000) + 100,
-                likes: data.likes || Math.floor(Math.random() * 50) + 10,
-                downloads: data.downloads || 0,
               };
-              
-              resource.address = formatResourceAddress(resource);
-              resource.popularityScore = (resource.views * 1) + (resource.likes * 3);
-              
               allData.push(resource);
             } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
               // Handle quiz resources
@@ -473,14 +432,7 @@ export async function getStaticProps() {
                 category,
                 province,
                 quiz: data.academicInfo.quiz,
-                views: data.views || Math.floor(Math.random() * 500) + 50,
-                likes: data.likes || Math.floor(Math.random() * 30) + 5,
-                downloads: data.downloads || 0,
               };
-              
-              resource.address = formatResourceAddress(resource);
-              resource.popularityScore = (resource.views * 1) + (resource.likes * 3);
-              
               allData.push(resource);
             }
           });
@@ -557,15 +509,6 @@ export async function getStaticProps() {
     const ntsCount = allData.filter((item) => item.collection.includes('NTS')).length;
     const ppscCount = allData.filter((item) => item.collection.includes('PPSC')).length;
 
-    // Generate counts for Cambridge
-    const oLevelCount = allData.filter((item) => item.collection.includes('OLevel')).length;
-    const aLevelCount = allData.filter((item) => item.collection.includes('ALevel')).length;
-
-    // Get top trending posts based on popularity score
-    const trendingPosts = allData
-      .sort((a, b) => b.popularityScore - a.popularityScore)
-      .slice(0, 4);
-
     // Featured data: Latest 8 resources sorted by upload date
     const featuredData = allData
       .sort((a, b) => (b.year || '9999') - (a.year || '9999'))
@@ -586,9 +529,6 @@ export async function getStaticProps() {
         cssCount,
         ntsCount,
         ppscCount,
-        oLevelCount,
-        aLevelCount,
-        trendingPosts,
       },
       revalidate: 86400,
     };
@@ -609,9 +549,6 @@ export async function getStaticProps() {
         cssCount: 0,
         ntsCount: 0,
         ppscCount: 0,
-        oLevelCount: 0,
-        aLevelCount: 0,
-        trendingPosts: [],
       },
       revalidate: 3600,
     };
@@ -635,8 +572,8 @@ const NewsCard = memo(({ news, isActive, onClick }) => (
           {news.title}
         </h4>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-          <TrendingUp className="h-3 w-3 mr-1" />
-          {news.views} views • {news.likes} likes
+          <Calendar className="h-3 w-3 mr-1" />
+          {news.date}
         </p>
       </div>
     </div>
@@ -660,15 +597,44 @@ const TaleemSpot = ({
   cssCount,
   ntsCount,
   ppscCount,
-  oLevelCount,
-  aLevelCount,
-  trendingPosts,
 }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [filteredData, setFilteredData] = useState(resources || []);
   const [activeNews, setActiveNews] = useState(0);
+
+  // Updated to Top 4 Trending Posts
+  const trendingPosts = useMemo(() => [
+    {
+      id: 1,
+      title: 'MDCAT 2024 Past Papers - Punjab Board',
+      date: 'Most Popular',
+      content: 'Highly accessed MDCAT 2024 past papers from Punjab Board, downloaded by thousands of students.',
+      type: 'trending',
+    },
+    {
+      id: 2,
+      title: '9th Class Physics Notes - Lahore Board',
+      date: 'Top Resource',
+      content: 'Top-rated comprehensive Physics notes for 9th class students under Lahore Board.',
+      type: 'trending',
+    },
+    {
+      id: 3,
+      title: 'CSS General Knowledge 2024 Quiz',
+      date: 'Highly Rated',
+      content: 'Popular quiz for CSS 2024 General Knowledge preparation, widely used by aspirants.',
+      type: 'trending',
+    },
+    {
+      id: 4,
+      title: 'O Level Chemistry Past Papers 2024',
+      date: 'Trending',
+      content: 'Frequently downloaded O Level Chemistry past papers for 2024, essential for Cambridge students.',
+      type: 'trending',
+    },
+  ], []);
 
   // Search functionality
   useEffect(() => {
@@ -736,7 +702,7 @@ const TaleemSpot = ({
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, resources, allResources, subjectCategories, boardCategories]);
 
-  // Auto-rotate news
+  // Auto-rotate trending posts
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveNews((prev) => (prev + 1) % trendingPosts.length);
@@ -765,7 +731,7 @@ const TaleemSpot = ({
         <meta property="og:url" content="https://taleemspot.com" />
         <meta property="og:type" content="website" />
         <meta
-                    property="og:image"
+          property="og:image"
           content="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9"
         />
         <meta name="twitter:card" content="summary_large_image" />
@@ -809,20 +775,19 @@ const TaleemSpot = ({
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Sidebar */}
             <div className="lg:col-span-1">
-              {/* Top Trending Posts Section */}
+              {/* Top 4 Trending Posts Section */}
               <SidebarSection
-                title="Trending Posts"
-                subtitle={`Most Popular Resources - ${new Date().toLocaleDateString()}`}
+                title="Top Trending Posts"
+                subtitle={`Most Popular Resources - ${new Date().getDate()}`}
                 icon={TrendingUp}
                 colorScheme="red"
                 showSerialNumbers={true}
                 items={trendingPosts.map((post, index) => ({
                   name: post.title,
-                  count: `${post.views} views`,
                   badge: index === 0 ? 'Most Popular' : null,
-                  href: post.path,
+                  href: '#',
                 }))}
-                viewAllLink="/trending"
+                viewAllLink="/trending-posts"
                 badgeColors={{
                   'Most Popular': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
                 }}
@@ -847,15 +812,18 @@ const TaleemSpot = ({
 
               {/* Cambridge Section */}
               <SidebarSection
-                title="Cambridge"
-                subtitle="O Level & A Level Resources"
-                icon={Award}
-                colorScheme="blue"
+                title="O Levels & A Levels"
+                subtitle="Cambridge Resources"
+                icon={BookOpen}
+                colorScheme="teal"
                 showSerialNumbers={true}
-                items={[
-                  { name: 'O Level', count: oLevelCount, href: '/Cambridge-OLevel' },
-                  { name: 'A Level', count: aLevelCount, href: '/Cambridge-ALevel' },
-                ]}
+                items={classCategories
+                  .filter((cat) => cat.category === 'Cambridge')
+                  .map((cat) => ({
+                    name: cat.name,
+                    count: cat.count,
+                    href: `/${cat.id}`,
+                  }))}
                 viewAllLink="/cambridge"
               />
 
@@ -899,7 +867,14 @@ const TaleemSpot = ({
               {/* Content Grid - Exactly 8 Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
                 {(searchTerm ? filteredData.slice(0, 12) : filteredData.slice(0, 8)).map((item) => (
-                  <ResourceCard key={item.id} resource={item} />
+                  <ResourceCard
+                    key={item.id}
+                    resource={{
+                      ...item,
+                      // Ensure ResourceCard displays these details instead of N/A N/A
+                      displayInfo: `${item.class} ${item.category} ${item.subject} ${item.type}${item.province ? ` - ${item.province}` : ''}`,
+                    }}
+                  />
                 ))}
 
                 {filteredData.length === 0 && searchTerm && (
