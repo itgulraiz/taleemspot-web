@@ -11,6 +11,18 @@ const ResourceCard = memo(({ resource }) => {
     router.push(resource.path);
   };
 
+  // Construct displayInfo if not provided
+  const displayInfo = resource.displayInfo || [
+    resource.class,
+    resource.category,
+    resource.subject,
+    resource.type,
+    resource.province ? `- ${resource.province}` : ''
+  ]
+    .filter(Boolean) // Remove undefined or empty values
+    .join(' ')
+    .trim() || 'N/A';
+
   return (
     <div 
       onClick={handleCardClick}
@@ -26,7 +38,7 @@ const ResourceCard = memo(({ resource }) => {
               {resource.title}
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 flex items-center">
-              <span>{resource.displayInfo || 'N/A'}</span>
+              <span>{displayInfo}</span>
             </p>
           </div>
         </div>
