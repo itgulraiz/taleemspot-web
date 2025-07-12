@@ -4,9 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import ResourceCard from '../../components/ResourceCard'; // Keep this if it works, remove if it causes errors
-import { extractDriveId, db } from '../../firebase'; // Adjust this path to your Firebase config file
-import { collection, getDocs } from 'firebase/firestore';
 
 const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
   useEffect(() => {
@@ -30,6 +27,16 @@ const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
         data-full-width-responsive="true"
       />
     </div>
+  );
+};
+
+// Inline ResourceCard Component
+const ResourceCard = ({ resource }) => {
+  return (
+    <Link href={`/resource/${resource.class}/${resource.type}/${resource.documentId}`} className="block bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+      <h3 className="text-lg font-semibold">{resource.title}</h3>
+      <p className="text-sm text-gray-600">{resource.description}</p>
+    </Link>
   );
 };
 
@@ -88,8 +95,6 @@ const ResourceDetail = ({ allResources }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Removed Header */}
-
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1">
           <div className="col-span-1">
@@ -163,81 +168,64 @@ const ResourceDetail = ({ allResources }) => {
               </div>
             </div>
           </div>
-
-          {/* Removed Sidebar */}
         </div>
       </div>
-
-      {/* Removed Footer */}
     </div>
   );
 };
 
+// Dummy data for allResources
 export async function getStaticProps() {
-  try {
-    let allData = [];
-    for (const collectionName of allCollections) {
-      try {
-        const collRef = collection(db, collectionName);
-        const snapshot = await getDocs(collRef);
-        if (!snapshot.empty) {
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            if (data.metadata?.resourceType === 'PDF' && data.content?.fileUrl) {
-              const driveId = extractDriveId(data.content.fileUrl);
-              const subjects = Array.isArray(data.academicInfo?.subject) ? data.academicInfo.subject : [data.academicInfo?.subject];
-              subjects.forEach((subject, index) => {
-                const resource = {
-                  id: `${collectionName}-${doc.id}-${index}`,
-                  title: data.content.title || `${parseCollectionName(collectionName).category} ${parseCollectionName(collectionName).classLevel || ''} ${parseCollectionName(collectionName).contentType} - ${subject}`,
-                  description: data.content.description || `Access ${parseCollectionName(collectionName).contentType} for ${subject} ${parseCollectionName(collectionName).classLevel || ''}`,
-                  subject: subject || 'General',
-                  class: parseCollectionName(collectionName).classLevel || 'General',
-                  board: data.academicInfo?.board || 'N/A',
-                  year: data.academicInfo?.year || 'N/A',
-                  type: parseCollectionName(collectionName).contentType,
-                  url: data.content.fileUrl,
-                  downloadUrl: driveId ? `https://drive.google.com/uc?export=download&id=${driveId}` : data.content.fileUrl,
-                  driveId,
-                  collection: collectionName,
-                  documentId: doc.id,
-                  itemIndex: index,
-                  author: data.userInfo?.authorName || getRandomAuthor(),
-                  authorImage: data.userInfo?.authorImage || null,
-                };
-                allData.push(resource);
-              });
-            }
-          });
-        }
-      } catch (error) {
-        console.error(`Error fetching collection ${collectionName}:`, error);
-      }
-    }
-    return {
-      props: {
-        allResources: allData,
-      },
-      revalidate: 86400,
-    };
-  } catch (error) {
-    console.error('Error in getStaticProps:', error);
-    return {
-      props: {
-        allResources: [],
-      },
-      revalidate: 3600,
-    };
-  }
+  const dummyResources = [
+    {
+      id: "1",
+      title: "Math Notes for 9th Class",
+      description: "Comprehensive notes for 9th class mathematics.",
+      subject: "Mathematics",
+      class: "9th",
+      board: "Punjab Board",
+      year: "2023",
+      type: "notes",
+      url: "#",
+      downloadUrl: "#",
+      driveId: "dummyDriveId123",
+      documentId: "doc1",
+      author: "John Doe",
+      authorImage: null,
+    },
+    {
+      id: "2",
+      title: "Physics Notes for 9th Class",
+      description: "Detailed physics notes for 9th class.",
+      subject: "Physics",
+      class: "9th",
+      board: "Punjab Board",
+      year: "2023",
+      type: "notes",
+      url: "#",
+      downloadUrl: "#",
+      driveId: "dummyDriveId456",
+      documentId: "doc2",
+      author: "Jane Smith",
+      authorImage: null,
+    },
+  ];
+
+  return {
+    props: {
+      allResources: dummyResources,
+    },
+    revalidate: 86400,
+  };
 }
 
+// Dummy paths for static generation
 export async function getStaticPaths() {
-  const paths = allCollections.flatMap(collectionName => {
-    const { classLevel, contentType } = parseCollectionName(collectionName);
-    return [{ params: { class: classLevel || 'general', type: contentType.toLowerCase(), documentId: 'doc1' } }];
-  });
   return {
-    paths,
+    paths: [
+      { params: { class: '9th', type: 'notes', documentId: 'doc1' } },
+      { params: { class: '9th', type: 'notes', documentId: 'doc2' } },
+    ],
     fallback: 'blocking',
   };
 }
