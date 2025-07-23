@@ -26,26 +26,79 @@ function extractDriveId(url) {
   }
 }
 
-// Helper function to generate SEO-friendly resource URL paths
+// Enhanced helper function to generate SEO-friendly resource URL paths
 function generateResourcePath(item) {
   const segments = [];
   
   // Build URL segments in proper order based on resource metadata
-  if (item.province) segments.push(item.province.toLowerCase());
-  if (item.class && item.class !== 'General') segments.push(item.class.toLowerCase());
-  if (item.type) segments.push(item.type.toLowerCase());
+  // Province comes first (if available)
+  if (item.province && item.province !== 'General') {
+    segments.push(item.province.toLowerCase().replace(/\s+/g, ''));
+  }
   
-  // Add subject if available
+  // Class/Level comes second
+  if (item.class && item.class !== 'General') {
+    const classSegment = item.class.toLowerCase()
+      .replace(/\s+/g, '')
+      .replace('class', '')
+      .replace('level', '-level');
+    segments.push(classSegment);
+  }
+  
+  // Content type comes third
+  if (item.type) {
+    const typeSegment = item.type.toLowerCase()
+      .replace(/\s+/g, '')
+      .replace('papers', 'papers')
+      .replace('textbooks', 'textbooks');
+    segments.push(typeSegment);
+  }
+  
+  // Subject comes fourth (if available and not general)
   if (item.subject && item.subject !== 'General') {
     segments.push(item.subject.toLowerCase().replace(/\s+/g, '-'));
   }
   
-  // Add chapter/year info if available
-  if (item.chapter) segments.push(item.chapter.toLowerCase().replace(/\s+/g, '-'));
-  if (item.year && item.year !== 'N/A') segments.push(item.year);
+  // Chapter info (if available)
+  if (item.chapter) {
+    segments.push(item.chapter.toLowerCase().replace(/\s+/g, '-'));
+  }
   
-  // Add document ID at the end for specific resource
-  if (item.documentId) segments.push(item.documentId);
+  // Year (if available and not N/A)
+  if (item.year && item.year !== 'N/A') {
+    segments.push(item.year);
+  }
+  
+  // Document ID at the end for specific resource identification
+  if (item.documentId) {
+    segments.push(item.documentId);
+  }
+  
+  return segments.join('/');
+}
+
+// Enhanced function to generate category-based URLs
+function generateCategoryPath(category, classLevel, contentType, province = null) {
+  const segments = [];
+  
+  // Add province if available
+  if (province) {
+    segments.push(province.toLowerCase().replace(/\s+/g, ''));
+  }
+  
+  // Add class/level
+  if (classLevel) {
+    const classSegment = classLevel.toLowerCase()
+      .replace(/\s+/g, '')
+      .replace('class', '')
+      .replace('level', '-level');
+    segments.push(classSegment);
+  }
+  
+  // Add content type
+  if (contentType) {
+    segments.push(contentType.toLowerCase().replace(/\s+/g, ''));
+  }
   
   return segments.join('/');
 }
@@ -61,7 +114,7 @@ const getRandomAuthor = () => {
   return authors[Math.floor(Math.random() * authors.length)];
 };
 
-// All collections from Selection.txt
+// All collections from Selection.txt (unchanged)
 const allCollections = [
   'AJKPSCNotes', 'AJKPSCPastPapers', 'AJKPSCQuiz', 'AJKPSCSyllabus', 'AJKPSCTest', 'AJKPSCTextBooks',
   'ALevelLectures', 'ALevelNotes', 'ALevelPastPapers', 'ALevelQuiz', 'ALevelSyllabus', 'ALevelTest', 'ALevelTextBooks',
@@ -237,7 +290,7 @@ const allCollections = [
   'VirtualUniversityRollNoSlip', 'VirtualUniversitySyllabus', 'VirtualUniversityTest', 'VirtualUniversityTextBooks',
 ];
 
-// Category definitions
+// Category definitions (unchanged)
 const categoryDefinitions = {
   School: {
     provinces: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
@@ -277,7 +330,7 @@ const categoryDefinitions = {
   },
 };
 
-// Helper function to parse collection name and extract metadata
+// Helper function to parse collection name and extract metadata (unchanged)
 const parseCollectionName = (collectionName) => {
   let category, province, classLevel, contentType;
 
@@ -339,6 +392,7 @@ const parseCollectionName = (collectionName) => {
   return { category: 'General', province: null, classLevel: null, contentType: collectionName };
 };
 
+// Updated getStaticProps with enhanced URL generation
 export async function getStaticProps() {
   try {
     let allData = [];
@@ -401,6 +455,7 @@ export async function getStaticProps() {
                     category,
                     province,
                     authorImage: data.userInfo?.authorImage || null,
+                    chapter: data.academicInfo?.chapter || null,
                   };
                   allData.push(resource);
                 }
@@ -426,6 +481,7 @@ export async function getStaticProps() {
                 category,
                 province,
                 authorImage: data.userInfo?.authorImage || null,
+                chapter: data.academicInfo?.chapter || null,
               };
               allData.push(resource);
             } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
@@ -450,6 +506,7 @@ export async function getStaticProps() {
                 province,
                 authorImage: data.userInfo?.authorImage || null,
                 quiz: data.academicInfo.quiz,
+                chapter: data.academicInfo?.chapter || null,
               };
               allData.push(resource);
             }
@@ -573,7 +630,7 @@ export async function getStaticProps() {
   }
 }
 
-// Enhanced News Card Component
+// Enhanced News Card Component (unchanged)
 const NewsCard = memo(({ news, isActive, onClick }) => (
   <div
     onClick={onClick}
@@ -600,7 +657,7 @@ const NewsCard = memo(({ news, isActive, onClick }) => (
 
 NewsCard.displayName = 'NewsCard';
 
-// Main Component
+// Main Component with updated sidebar URLs
 const TaleemSpot = ({
   resources,
   allResources,
@@ -654,7 +711,7 @@ const TaleemSpot = ({
     },
   ], []);
 
-  // Search functionality
+  // Search functionality (unchanged)
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (searchTerm.trim() === '') {
@@ -720,7 +777,7 @@ const TaleemSpot = ({
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, resources, allResources, subjectCategories, boardCategories]);
 
-  // Auto-rotate news
+  // Auto-rotate news (unchanged)
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveNews((prev) => (prev + 1) % latestNews.length);
@@ -732,7 +789,7 @@ const TaleemSpot = ({
   return (
     <>
       <Head>
-        <title>TaleemSpot - Pakistan's #1 Educational Resource Platform | Past Papers, Notes & Study Materials</title>
+                <title>TaleemSpot - Pakistan's #1 Educational Resource Platform | Past Papers, Notes & Study Materials</title>
         <meta
           name="description"
           content="Access comprehensive educational resources including past papers, notes, guess papers, lectures, quizzes, and study materials for 9th-12th classes, ECAT, MDCAT, CSS, NTS, and more from all Pakistani boards and institutions. Download free educational content."
@@ -811,7 +868,7 @@ const TaleemSpot = ({
                 }}
               />
 
-              {/* Classes Section */}
+              {/* Classes Section - Updated URLs */}
               <SidebarSection
                 title="Classes"
                 subtitle="Explore School & College Resources"
@@ -820,15 +877,23 @@ const TaleemSpot = ({
                 showSerialNumbers={true}
                 items={classCategories
                   .filter((cat) => ['School', 'College'].includes(cat.category))
-                  .map((cat) => ({
-                    name: cat.name,
-                    count: cat.count,
-                    href: `/resource/${cat.category.toLowerCase()}/${cat.name.replace(' Class', '').toLowerCase()}`,
-                  }))}
+                  .map((cat) => {
+                    // Generate proper category URLs
+                    const classSegment = cat.name.replace(' Class', '').toLowerCase();
+                    const categoryPath = cat.category === 'School' ? 
+                      generateCategoryPath('School', classSegment, 'notes', 'punjab') :
+                      generateCategoryPath('College', classSegment, 'notes', 'punjab');
+                    
+                    return {
+                      name: cat.name,
+                      count: cat.count,
+                      href: `/resource/${categoryPath}`,
+                    };
+                  })}
                 viewAllLink="/resource/classes"
               />
 
-              {/* Entry Test Section */}
+              {/* Entry Test Section - Updated URLs */}
               <SidebarSection
                 title="Entry Test"
                 subtitle="Prepare for Entry Tests"
@@ -836,11 +901,11 @@ const TaleemSpot = ({
                 colorScheme="purple"
                 showSerialNumbers={true}
                 items={[
-                  { name: 'MDCAT', count: mdcatCount, href: '/resource/mdcat' },
-                  { name: 'ECAT', count: ecatCount, href: '/resource/ecat' },
-                  { name: 'NUMS', count: numsCount, href: '/resource/nums' },
-                  { name: 'AMC', count: amcCount, href: '/resource/amc' },
-                  { name: 'PMA', count: pmaCount, href: '/resource/pma' },
+                  { name: 'MDCAT', count: mdcatCount, href: '/resource/mdcat/notes' },
+                  { name: 'ECAT', count: ecatCount, href: '/resource/ecat/notes' },
+                  { name: 'NUMS', count: numsCount, href: '/resource/nums/notes' },
+                  { name: 'AMC', count: amcCount, href: '/resource/amc/notes' },
+                  { name: 'PMA', count: pmaCount, href: '/resource/pma/notes' },
                 ]}
                 viewAllLink="/resource/entry-tests"
               />
@@ -893,7 +958,7 @@ const TaleemSpot = ({
 
             {/* Right Sidebar */}
             <div className="lg:col-span-1">
-              {/* Competitive Exams Section */}
+              {/* Competitive Exams Section - Updated URLs */}
               <SidebarSection
                 title="Competitive Exams"
                 subtitle="Prepare for Competitive Exams"
@@ -901,16 +966,16 @@ const TaleemSpot = ({
                 colorScheme="yellow"
                 showSerialNumbers={true}
                 items={[
-                  { name: 'CSS', count: cssCount, href: '/resource/css' },
-                  { name: 'NTS', count: ntsCount, href: '/resource/nts' },
-                  { name: 'PPSC', count: ppscCount, href: '/resource/ppsc' },
-                  { name: 'FPSC', count: '50+', href: '/resource/fpsc' },
-                  { name: 'PMS', count: '30+', href: '/resource/pms' },
+                  { name: 'CSS', count: cssCount, href: '/resource/css/notes' },
+                  { name: 'NTS', count: ntsCount, href: '/resource/nts/notes' },
+                  { name: 'PPSC', count: ppscCount, href: '/resource/ppsc/notes' },
+                  { name: 'FPSC', count: '50+', href: '/resource/fpsc/notes' },
+                  { name: 'PMS', count: '30+', href: '/resource/pms/notes' },
                 ]}
                 viewAllLink="/resource/competitive-exams"
               />
 
-              {/* University Section */}
+              {/* University Section - Updated URLs */}
               <SidebarSection
                 title="University"
                 subtitle="Resources for Higher Education"
@@ -922,12 +987,32 @@ const TaleemSpot = ({
                   .map((cat) => ({
                     name: cat.name,
                     count: cat.count,
-                    href: `/resource/university/${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
+                    href: `/resource/${cat.name.toLowerCase().replace(/\s+/g, '')}/notes`,
                   }))}
                 viewAllLink="/resource/university"
               />
 
-              {/* General Section */}
+              {/* Cambridge Section - Updated URLs */}
+              <SidebarSection
+                title="Cambridge"
+                subtitle="International Education"
+                icon={BookOpen}
+                colorScheme="indigo"
+                showSerialNumbers={true}
+                items={classCategories
+                  .filter((cat) => cat.category === 'Cambridge')
+                  .map((cat) => {
+                    const levelSegment = cat.name.toLowerCase().replace(' ', '-');
+                    return {
+                      name: cat.name,
+                      count: cat.count,
+                      href: `/resource/${levelSegment}/notes`,
+                    };
+                  })}
+                viewAllLink="/resource/cambridge"
+              />
+
+              {/* General Section - Updated URLs */}
               <SidebarSection
                 title="General"
                 subtitle="Miscellaneous Resources"
@@ -935,13 +1020,157 @@ const TaleemSpot = ({
                 colorScheme="gray"
                 showSerialNumbers={true}
                 items={[
-                  { name: 'Urdu Calligraphy', count: '10+', href: '/resource/urdu-calligraphy' },
-                  { name: 'English Calligraphy', count: '15+', href: '/resource/english-calligraphy' },
-                  { name: 'English Language', count: '20+', href: '/resource/english-language' },
+                  { name: 'Urdu Calligraphy', count: '10+', href: '/resource/urducalligraphy' },
+                  { name: 'English Calligraphy', count: '15+', href: '/resource/englishcalligraphy' },
+                  { name: 'English Language', count: '20+', href: '/resource/englishlanguage' },
                   { name: 'General Resources', count: '50+', href: '/resource/general' },
                 ]}
                 viewAllLink="/resource/general"
               />
+            </div>
+          </div>
+
+          {/* Featured Categories Section */}
+          <div className="mt-12">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                Explore by Category
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                Browse our comprehensive collection of educational resources organized by categories, subjects, and exam types.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* School Resources */}
+              <Link href="/resource/punjab/9th/notes" className="group">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white">
+                    <div className="flex items-center justify-between">
+                      <BookOpen className="h-8 w-8" />
+                      <span className="text-sm font-medium bg-white/20 px-2 py-1 rounded-full">
+                        {categoryCounts.School.count}+ Resources
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mt-4">School (9th-10th)</h3>
+                    <p className="text-green-100 mt-2">Complete study materials for 9th and 10th classes</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>All Boards Available</span>
+                      <span className="text-green-600 dark:text-green-400 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              {/* College Resources */}
+              <Link href="/resource/punjab/11th/notes" className="group">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+                    <div className="flex items-center justify-between">
+                      <Users className="h-8 w-8" />
+                      <span className="text-sm font-medium bg-white/20 px-2 py-1 rounded-full">
+                        {categoryCounts.College.count}+ Resources
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mt-4">College (11th-12th)</h3>
+                    <p className="text-blue-100 mt-2">Advanced materials for intermediate students</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>FSc, ICS, FA Available</span>
+                      <span className="text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Entry Tests */}
+              <Link href="/resource/mdcat/notes" className="group">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 text-white">
+                    <div className="flex items-center justify-between">
+                      <Award className="h-8 w-8" />
+                      <span className="text-sm font-medium bg-white/20 px-2 py-1 rounded-full">
+                        {categoryCounts['Entry Test'].count}+ Resources
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mt-4">Entry Tests</h3>
+                    <p className="text-purple-100 mt-2">MDCAT, ECAT, NUMS preparation materials</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>All Major Tests</span>
+                      <span className="text-purple-600 dark:text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Competitive Exams */}
+              <Link href="/resource/css/notes" className="group">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 text-white">
+                    <div className="flex items-center justify-between">
+                      <Star className="h-8 w-8" />
+                      <span className="text-sm font-medium bg-white/20 px-2 py-1 rounded-full">
+                        {categoryCounts['Competition Exam'].count}+ Resources
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mt-4">Competitive Exams</h3>
+                    <p className="text-yellow-100 mt-2">CSS, NTS, PPSC, FPSC preparation</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>Government Jobs</span>
+                      <span className="text-yellow-600 dark:text-yellow-400 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Statistics Section */}
+          <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                Platform Statistics
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400">
+                Join thousands of students who trust TaleemSpot for their educational needs
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
+                  {allResources.length.toLocaleString()}+
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Total Resources</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                  {subjectCategories.length}+
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Subjects Covered</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                  {boardCategories.length}+
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Educational Boards</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
+                  50K+
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Happy Students</div>
+              </div>
             </div>
           </div>
         </div>
