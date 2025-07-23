@@ -1,19 +1,138 @@
-'use client';
-
-import React, { useState, useEffect, useMemo, memo } from 'react';
-import { Search, BookOpen, Users, Star, TrendingUp, Calendar, Award, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Menu, X, Download, BookOpen, Users, ChevronDown, ExternalLink, Home as HomeIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from "firebase/firestore";
 import { db } from '../firebaseConfig';
 import Head from 'next/head';
-import { useAuth } from '../context/AuthContext';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import SearchBar from '../components/SearchBar';
-import ResourceCard from '../components/ResourceCard';
-import SidebarSection from '../components/SidebarSection';
-import ViewAllButton from '../components/ViewAllButton';
+
+export async function getStaticProps() {
+  try {
+    // Get all collections
+    const collections = [
+      "Punjab9thPastPapers",
+      "Punjab10thPastPapers",
+      "Punjab11thPastPapers",
+      "Punjab12thPastPapers",
+      "PunjabECATPastPapers",
+      "PunjabMDCATPastPapers"
+    ];
+
+    let allData = [];
+    let classCategories = [];
+    
+    // Process each collection
+    for (const collectionName of collections) {
+      try {
+        const collRef = collection(db, collectionName);
+        const snapshot = await getDocs(collRef);
+        
+        if (!snapshot.empty) {
+          // Extract class info for categories
+          const className = collectionName
+            .replace("Punjab", "")
+            .replace("PastPapers", "")
+            .replace("ECAT", "ECAT ")
+            .replace("MDCAT", "MDCAT ");
+          
+          const displayName = collectionName.includes("ECAT") || collectionName.includes("MDCAT") 
+            ? className.trim() 
+            : `${className.trim()} Class`;
+            
+          classCategories.push({
+            id: collectionName,
+            name: displayName,
+            count: snapshot.size
+          });
+          
+          // Process each document in the collection
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            
+            // If this document has subjects array, process it
+            if (data.subjects && Array.isArray(data.subjects)) {
+              data.subjects.forEach((subject, index) => {
+                if (subject.url && subject.board && subject.year) {
+                  // Create a record for each subject
+                  const driveId = extractDriveId(subject.url);
+                  allData.push({
+                    id: `${collectionName}-${doc.id}-${index}`,
+                    title: `${displayName} ${doc.id} ${subject.year} - ${subject.board} Board`,
+                    description: `Download ${displayName} ${doc.id} past paper from ${subject.board} Board for the year ${subject.year}`,
+                    subject: doc.id,
+                    class: className.trim(),
+                    board: subject.board,
+                    year: subject.year,
+                    type: "Past Paper",
+                    url: subject.url,
+                    downloadUrl: `https://drive.google.com/uc?export=download&id=${driveId}`,
+                    driveId: driveId,
+                    collection: collectionName,
+                    documentId: doc.id,
+                    itemIndex: index,
+                    path: `/${collectionName}/${doc.id}/${index}`
+                  });
+                }
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching collection ${collectionName}:`, error);
+      }
+    }
+
+    // Generate board categories based on the data
+    const boardsSet = new Set();
+    allData.forEach(item => boardsSet.add(item.board));
+    
+    const boardCategories = Array.from(boardsSet).map((board, index) => ({
+      id: index + 1,
+      name: `${board} Board`,
+      count: allData.filter(item => item.board === board).length
+    }));
+
+    // Generate subject categories based on the data
+    const subjectsSet = new Set();
+    allData.forEach(item => subjectsSet.add(item.subject));
+    
+    const subjectCategories = Array.from(subjectsSet).map((subject, index) => ({
+      id: index + 1,
+      name: subject,
+      count: allData.filter(item => item.subject === subject).length,
+      icon: "https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9"
+    }));
+
+    // Take only the most recent 20 items for the homepage
+    const featuredData = allData
+      .sort((a, b) => b.year - a.year)
+      .slice(0, 20);
+
+    return {
+      props: {
+        resources: featuredData,
+        allResources: allData,
+        classCategories,
+        boardCategories,
+        subjectCategories
+      },
+      // Revalidate every 24 hours
+      revalidate: 86400
+    };
+  } catch (error) {
+    console.error("Error in getStaticProps:", error);
+    return {
+      props: {
+        resources: [],
+        allResources: [],
+        classCategories: [],
+        boardCategories: [],
+        subjectCategories: []
+      },
+      revalidate: 3600 // Retry sooner if there was an error
+    };
+  }
+}
 
 // Helper function to extract Drive ID from URL
 function extractDriveId(url) {
@@ -26,903 +145,831 @@ function extractDriveId(url) {
   }
 }
 
-// Sample authors data
-const authors = [
-  'Muhammad Ali Khan', 'Fatima Ahmed', 'Ahmed Hassan', 'Ayesha Malik', 'Hassan Raza',
-  'Zainab Sheikh', 'Omar Farooq', 'Rabia Nawaz', 'Bilal Ahmad', 'Sana Tariq',
-];
-
-// Function to get random author
-const getRandomAuthor = () => {
-  return authors[Math.floor(Math.random() * authors.length)];
-};
-
-// All collections from Selection.txt
-const allCollections = [
-  'AJKPSCNotes', 'AJKPSCPastPapers', 'AJKPSCQuiz', 'AJKPSCSyllabus', 'AJKPSCTest', 'AJKPSCTextBooks',
-  'ALevelLectures', 'ALevelNotes', 'ALevelPastPapers', 'ALevelQuiz', 'ALevelSyllabus', 'ALevelTest', 'ALevelTextBooks',
-  'AMCLectures', 'AMCNotes', 'AMCPastPapers', 'AMCQuiz', 'AMCRollNoSlip', 'AMCSyllabus', 'AMCTest', 'AMCTextBooks',
-  'AllamaIqbalOpenUniversityLectures', 'AllamaIqbalOpenUniversityNotes', 'AllamaIqbalOpenUniversityPastPapers',
-  'AllamaIqbalOpenUniversityQuiz', 'AllamaIqbalOpenUniversitySyllabus', 'AllamaIqbalOpenUniversityTest',
-  'AllamaIqbalOpenUniversityTextBooks', 'AzadJammuKashmir10thDateSheet', 'AzadJammuKashmir10thGazette',
-  'AzadJammuKashmir10thGuessPapers', 'AzadJammuKashmir10thLectures', 'AzadJammuKashmir10thNotes',
-  'AzadJammuKashmir10thPairingScheme', 'AzadJammuKashmir10thPastPapers', 'AzadJammuKashmir10thQuiz',
-  'AzadJammuKashmir10thResult', 'AzadJammuKashmir10thRollNoSlip', 'AzadJammuKashmir10thSyllabus',
-  'AzadJammuKashmir10thTest', 'AzadJammuKashmir10thTextBooks', 'AzadJammuKashmir11thDateSheet',
-  'AzadJammuKashmir11thGazette', 'AzadJammuKashmir11thGuessPapers', 'AzadJammuKashmir11thLectures',
-  'AzadJammuKashmir11thNotes', 'AzadJammuKashmir11thPairingScheme', 'AzadJammuKashmir11thPastPapers',
-  'AzadJammuKashmir11thQuiz', 'AzadJammuKashmir11thResult', 'AzadJammuKashmir11thRollNoSlip',
-  'AzadJammuKashmir11thSyllabus', 'AzadJammuKashmir11thTest', 'AzadJammuKashmir11thTextBooks',
-  'AzadJammuKashmir12thDateSheet', 'AzadJammuKashmir12thGazette', 'AzadJammuKashmir12thGuessPapers',
-  'AzadJammuKashmir12thLectures', 'AzadJammuKashmir12thNotes', 'AzadJammuKashmir12thPairingScheme',
-  'AzadJammuKashmir12thPastPapers', 'AzadJammuKashmir12thQuiz', 'AzadJammuKashmir12thResult',
-  'AzadJammuKashmir12thRollNoSlip', 'AzadJammuKashmir12thSyllabus', 'AzadJammuKashmir12thTest',
-  'AzadJammuKashmir12thTextBooks', 'AzadJammuKashmir9thDateSheet', 'AzadJammuKashmir9thGazette',
-  'AzadJammuKashmir9thGuessPapers', 'AzadJammuKashmir9thLectures', 'AzadJammuKashmir9thNotes',
-  'AzadJammuKashmir9thPairingScheme', 'AzadJammuKashmir9thPastPapers', 'AzadJammuKashmir9thQuiz',
-  'AzadJammuKashmir9thResult', 'AzadJammuKashmir9thRollNoSlip', 'AzadJammuKashmir9thSyllabus',
-  'AzadJammuKashmir9thTest', 'AzadJammuKashmir9thTextBooks', 'AzadJammuKashmirMDCATLectures',
-  'AzadJammuKashmirMDCATNotes', 'AzadJammuKashmirMDCATPastPapers', 'AzadJammuKashmirMDCATQuiz',
-  'AzadJammuKashmirMDCATResult', 'AzadJammuKashmirMDCATRollNoSlip', 'AzadJammuKashmirMDCATSyllabus',
-  'AzadJammuKashmirMDCATTest', 'AzadJammuKashmirMDCATTextBooks', 'AzadJammuKashmirOtherUniversityGuessPapers',
-  'AzadJammuKashmirOtherUniversityNotes', 'AzadJammuKashmirOtherUniversityPastPapers',
-  'AzadJammuKashmirOtherUniversityQuiz', 'AzadJammuKashmirOtherUniversitySyllabus',
-  'AzadJammuKashmirOtherUniversityTest', 'AzadJammuKashmirOtherUniversityTextBooks',
-  'AzadJammuKashmirUniversityEntryTestGuessPapers', 'AzadJammuKashmirUniversityEntryTestNotes',
-  'AzadJammuKashmirUniversityEntryTestPastPapers', 'AzadJammuKashmirUniversityEntryTestQuiz',
-  'AzadJammuKashmirUniversityEntryTestSyllabus', 'AzadJammuKashmirUniversityEntryTestTest', 'BDSGuessPapers',
-  'BDSNotes', 'BDSPastPapers', 'BDSQuiz', 'BDSSyllabus', 'BDSTest', 'BPSCNotes', 'BPSCPastPapers',
-  'BPSCQuiz', 'BPSCSyllabus', 'BPSCTest', 'BPSCTextBooks', 'Balochistan10thDateSheet', 'Balochistan10thGazette',
-  'Balochistan10thGuessPapers', 'Balochistan10thLectures', 'Balochistan10thNotes', 'Balochistan10thPairingScheme',
-  'Balochistan10thPastPapers', 'Balochistan10thQuiz', 'Balochistan10thResult', 'Balochistan10thRollNoSlip',
-  'Balochistan10thSyllabus', 'Balochistan10thTest', 'Balochistan10thTextBooks', 'Balochistan11thDateSheet',
-  'Balochistan11thGazette', 'Balochistan11thGuessPapers', 'Balochistan11thLectures', 'Balochistan11thNotes',
-  'Balochistan11thPairingScheme', 'Balochistan11thPastPapers', 'Balochistan11thQuiz', 'Balochistan11thResult',
-  'Balochistan11thRollNoSlip', 'Balochistan11thSyllabus', 'Balochistan11thTest', 'Balochistan11thTextBooks',
-  'Balochistan12thDateSheet', 'Balochistan12thGazette', 'Balochistan12thGuessPapers', 'Balochistan12thLectures',
-  'Balochistan12thNotes', 'Balochistan12thPairingScheme', 'Balochistan12thPastPapers', 'Balochistan12thQuiz',
-  'Balochistan12thResult', 'Balochistan12thRollNoSlip', 'Balochistan12thSyllabus', 'Balochistan12thTest',
-  'Balochistan12thTextBooks', 'Balochistan9thDateSheet', 'Balochistan9thGazette', 'Balochistan9thGuessPapers',
-  'Balochistan9thLectures', 'Balochistan9thNotes', 'Balochistan9thPairingScheme', 'Balochistan9thPastPapers',
-  'Balochistan9thQuiz', 'Balochistan9thResult', 'Balochistan9thRollNoSlip', 'Balochistan9thSyllabus',
-  'Balochistan9thTest', 'Balochistan9thTextBooks', 'BalochistanMDCATLectures', 'BalochistanMDCATNotes',
-  'BalochistanMDCATPastPapers', 'BalochistanMDCATQuiz', 'BalochistanMDCATResult', 'BalochistanMDCATRollNoSlip',
-  'BalochistanMDCATSyllabus', 'BalochistanMDCATTest', 'BalochistanMDCATTextBooks',
-  'BalochistanOtherUniversityGuessPapers', 'BalochistanOtherUniversityNotes', 'BalochistanOtherUniversityPastPapers',
-  'BalochistanOtherUniversityQuiz', 'BalochistanOtherUniversitySyllabus', 'BalochistanOtherUniversityTest',
-  'BalochistanOtherUniversityTextBooks', 'BalochistanUniversityEntryTestGuessPapers',
-  'BalochistanUniversityEntryTestNotes', 'BalochistanUniversityEntryTestPastPapers',
-  'BalochistanUniversityEntryTestQuiz', 'BalochistanUniversityEntryTestSyllabus',
-  'BalochistanUniversityEntryTestTest', 'CSSNotes', 'CSSPastPapers', 'CSSQuiz', 'CSSSyllabus', 'CSSTest',
-  'CSSTextBooks', 'ECATLectures', 'ECATNotes', 'ECATPastPapers', 'ECATQuiz', 'ECATResult', 'ECATSyllabus',
-  'ECATTest', 'ECATTextBooks', 'EnglishCalligraphy', 'EnglishLanguage', 'FPSCNotes', 'FPSCPastPapers',
-  'FPSCQuiz', 'FPSCSyllabus', 'FPSCTest', 'Federal10thDateSheet', 'Federal10thGazette', 'Federal10thGuessPapers',
-  'Federal10thLectures', 'Federal10thNotes', 'Federal10thPairingScheme', 'Federal10thPastPapers', 'Federal10thQuiz',
-  'Federal10thResult', 'Federal10thRollNoSlip', 'Federal10thSyllabus', 'Federal10thTest', 'Federal10thTextBooks',
-  'Federal11thDateSheet', 'Federal11thGazette', 'Federal11thGuessPapers', 'Federal11thLectures', 'Federal11thNotes',
-  'Federal11thPairingScheme', 'Federal11thPastPapers', 'Federal11thQuiz', 'Federal11thResult', 'Federal11thRollNoSlip',
-  'Federal11thSyllabus', 'Federal11thTest', 'Federal11thTextBooks', 'Federal12thDateSheet', 'Federal12thGazette',
-  'Federal12thGuessPapers', 'Federal12thLectures', 'Federal12thNotes', 'Federal12thPairingScheme',
-  'Federal12thPastPapers', 'Federal12thQuiz', 'Federal12thResult', 'Federal12thRollNoSlip', 'Federal12thSyllabus',
-  'Federal12thTest', 'Federal12thTextBooks', 'Federal9thDateSheet', 'Federal9thGazette', 'Federal9thGuessPapers',
-  'Federal9thLectures', 'Federal9thNotes', 'Federal9thPairingScheme', 'Federal9thPastPapers', 'Federal9thQuiz',
-  'Federal9thResult', 'Federal9thRollNoSlip', 'Federal9thSyllabus', 'Federal9thTest', 'Federal9thTextBooks',
-  'FederalMDCATLectures', 'FederalMDCATNotes', 'FederalMDCATPastPapers', 'FederalMDCATQuiz', 'FederalMDCATResult',
-  'FederalMDCATRollNoSlip', 'FederalMDCATSyllabus', 'FederalMDCATTest', 'FederalMDCATTextBooks',
-  'FederalOtherUniversityGuessPapers', 'FederalOtherUniversityNotes', 'FederalOtherUniversityPastPapers',
-  'FederalOtherUniversityQuiz', 'FederalOtherUniversitySyllabus', 'FederalOtherUniversityTest',
-  'FederalOtherUniversityTextBooks', 'FederalUniversityEntryTestGuessPapers', 'FederalUniversityEntryTestNotes',
-  'FederalUniversityEntryTestPastPapers', 'FederalUniversityEntryTestQuiz', 'FederalUniversityEntryTestSyllabus',
-  'FederalUniversityEntryTestTest', 'General', 'GilgitBaltistan10thDateSheet', 'GilgitBaltistan10thGazette',
-  'GilgitBaltistan10thGuessPapers', 'GilgitBaltistan10thLectures', 'GilgitBaltistan10thNotes',
-  'GilgitBaltistan10thPairingScheme', 'GilgitBaltistan10thPastPapers', 'GilgitBaltistan10thQuiz',
-  'GilgitBaltistan10thResult', 'GilgitBaltistan10thRollNoSlip', 'GilgitBaltistan10thSyllabus',
-  'GilgitBaltistan10thTest', 'GilgitBaltistan10thTextBooks', 'GilgitBaltistan11thDateSheet',
-  'GilgitBaltistan11thGazette', 'GilgitBaltistan11thGuessPapers', 'GilgitBaltistan11thLectures',
-  'GilgitBaltistan11thNotes', 'GilgitBaltistan11thPairingScheme', 'GilgitBaltistan11thPastPapers',
-  'GilgitBaltistan11thQuiz', 'GilgitBaltistan11thResult', 'GilgitBaltistan11thRollNoSlip',
-  'GilgitBaltistan11thSyllabus', 'GilgitBaltistan11thTest', 'GilgitBaltistan11thTextBooks',
-  'GilgitBaltistan12thDateSheet', 'GilgitBaltistan12thGazette', 'GilgitBaltistan12thGuessPapers',
-  'GilgitBaltistan12thLectures', 'GilgitBaltistan12thNotes', 'GilgitBaltistan12thPairingScheme',
-  'GilgitBaltistan12thPastPapers', 'GilgitBaltistan12thQuiz', 'GilgitBaltistan12thResult',
-  'GilgitBaltistan12thRollNoSlip', 'GilgitBaltistan12thSyllabus', 'GilgitBaltistan12thTest',
-  'GilgitBaltistan12thTextBooks', 'GilgitBaltistan9thDateSheet', 'GilgitBaltistan9thGazette',
-  'GilgitBaltistan9thGuessPapers', 'GilgitBaltistan9thLectures', 'GilgitBaltistan9thNotes',
-  'GilgitBaltistan9thPairingScheme', 'GilgitBaltistan9thPastPapers', 'GilgitBaltistan9thQuiz',
-  'GilgitBaltistan9thResult', 'GilgitBaltistan9thRollNoSlip', 'GilgitBaltistan9thSyllabus',
-  'GilgitBaltistan9thTest', 'GilgitBaltistan9thTextBooks', 'GilgitBaltistanMDCATLectures',
-  'GilgitBaltistanMDCATNotes', 'GilgitBaltistanMDCATPastPapers', 'GilgitBaltistanMDCATQuiz',
-  'GilgitBaltistanMDCATResult', 'GilgitBaltistanMDCATRollNoSlip', 'GilgitBaltistanMDCATSyllabus',
-  'GilgitBaltistanMDCATTest', 'GilgitBaltistanMDCATTextBooks', 'GilgitBaltistanOtherUniversityGuessPapers',
-  'GilgitBaltistanOtherUniversityNotes', 'GilgitBaltistanOtherUniversityPastPapers',
-  'GilgitBaltistanOtherUniversityQuiz', 'GilgitBaltistanOtherUniversitySyllabus',
-  'GilgitBaltistanOtherUniversityTest', 'GilgitBaltistanOtherUniversityTextBooks',
-  'GilgitBaltistanUniversityEntryTestGuessPapers', 'GilgitBaltistanUniversityEntryTestNotes',
-  'GilgitBaltistanUniversityEntryTestPastPapers', 'GilgitBaltistanUniversityEntryTestQuiz',
-  'GilgitBaltistanUniversityEntryTestSyllabus', 'GilgitBaltistanUniversityEntryTestTest',
-  'KPSCNotes', 'KPSCPastPapers', 'KPSCQuiz', 'KPSCSyllabus', 'KPSCTest', 'KPSCTextBooks',
-  'KhyberPakhtunkhwa10thDateSheet', 'KhyberPakhtunkhwa10thGazette', 'KhyberPakhtunkhwa10thGuessPapers',
-  'KhyberPakhtunkhwa10thLectures', 'KhyberPakhtunkhwa10thNotes', 'KhyberPakhtunkhwa10thPairingScheme',
-  'KhyberPakhtunkhwa10thPastPapers', 'KhyberPakhtunkhwa10thQuiz', 'KhyberPakhtunkhwa10thResult',
-  'KhyberPakhtunkhwa10thRollNoSlip', 'KhyberPakhtunkhwa10thSyllabus', 'KhyberPakhtunkhwa10thTest',
-  'KhyberPakhtunkhwa10thTextBooks', 'KhyberPakhtunkhwa11thDateSheet', 'KhyberPakhtunkhwa11thGazette',
-  'KhyberPakhtunkhwa11thGuessPapers', 'KhyberPakhtunkhwa11thLectures', 'KhyberPakhtunkhwa11thNotes',
-  'KhyberPakhtunkhwa11thPairingScheme', 'KhyberPakhtunkhwa11thPastPapers', 'KhyberPakhtunkhwa11thQuiz',
-  'KhyberPakhtunkhwa11thResult', 'KhyberPakhtunkhwa11thRollNoSlip', 'KhyberPakhtunkhwa11thSyllabus',
-  'KhyberPakhtunkhwa11thTest', 'KhyberPakhtunkhwa11thTextBooks', 'KhyberPakhtunkhwa12thDateSheet',
-  'KhyberPakhtunkhwa12thGazette', 'KhyberPakhtunkhwa12thGuessPapers', 'KhyberPakhtunkhwa12thLectures',
-  'KhyberPakhtunkhwa12thNotes', 'KhyberPakhtunkhwa12thPairingScheme', 'KhyberPakhtunkhwa12thPastPapers',
-  'KhyberPakhtunkhwa12thQuiz', 'KhyberPakhtunkhwa12thResult', 'KhyberPakhtunkhwa12thRollNoSlip',
-  'KhyberPakhtunkhwa12thSyllabus', 'KhyberPakhtunkhwa12thTest', 'KhyberPakhtunkhwa12thTextBooks',
-  'KhyberPakhtunkhwa9thDateSheet', 'KhyberPakhtunkhwa9thGazette', 'KhyberPakhtunkhwa9thGuessPapers',
-  'KhyberPakhtunkhwa9thLectures', 'KhyberPakhtunkhwa9thNotes', 'KhyberPakhtunkhwa9thPairingScheme',
-  'KhyberPakhtunkhwa9thPastPapers', 'KhyberPakhtunkhwa9thQuiz', 'KhyberPakhtunkhwa9thResult',
-  'KhyberPakhtunkhwa9thRollNoSlip', 'KhyberPakhtunkhwa9thSyllabus', 'KhyberPakhtunkhwa9thTest',
-  'KhyberPakhtunkhwa9thTextBooks', 'KhyberPakhtunkhwaMDCATLectures', 'KhyberPakhtunkhwaMDCATNotes',
-  'KhyberPakhtunkhwaMDCATPastPapers', 'KhyberPakhtunkhwaMDCATQuiz', 'KhyberPakhtunkhwaMDCATResult',
-  'KhyberPakhtunkhwaMDCATRollNoSlip', 'KhyberPakhtunkhwaMDCATSyllabus', 'KhyberPakhtunkhwaMDCATTest',
-  'KhyberPakhtunkhwaOtherUniversityGuessPapers', 'KhyberPakhtunkhwaOtherUniversityNotes',
-  'KhyberPakhtunkhwaOtherUniversityPastPapers', 'KhyberPakhtunkhwaOtherUniversityQuiz',
-  'KhyberPakhtunkhwaOtherUniversitySyllabus', 'KhyberPakhtunkhwaOtherUniversityTest',
-  'KhyberPakhtunkhwaOtherUniversityTextBooks', 'KhyberPakhtunkhwaUniversityEntryTestGuessPapers',
-  'KhyberPakhtunkhwaUniversityEntryTestNotes', 'KhyberPakhtunkhwaUniversityEntryTestPastPapers',
-  'KhyberPakhtunkhwaUniversityEntryTestQuiz', 'KhyberPakhtunkhwaUniversityEntryTestSyllabus',
-  'KhyberPakhtunkhwaUniversityEntryTestTest', 'MBBSGuessPapers', 'MBBSLectures', 'MBBSNotes',
-  'MBBSPastPapers', 'MBBSQuiz', 'MBBSSyllabus', 'MBBSTest', 'NTSNotes', 'NTSPastPapers', 'NTSQuiz',
-  'NTSSyllabus', 'NTSTest', 'NTSTextBooks', 'NUMSLectures', 'NUMSNotes', 'NUMSPastPapers', 'NUMSQuiz',
-  'NUMSResult', 'NUMSRollNoSlip', 'NUMSSyllabus', 'NUMSTest', 'NUMSTextBooks', 'OLevelLectures',
-  'OLevelNotes', 'OLevelPastPapers', 'OLevelQuiz', 'OLevelSyllabus', 'OLevelTest', 'OLevelTextBooks',
-  'PMAPastPapers', 'PMAQuiz', 'PMASyllabus', 'PMATest', 'PMSNotes', 'PMSPastPapers', 'PMSQuiz',
-  'PMSSyllabus', 'PMSTest', 'PMSTextBooks', 'PPSCNotes', 'PPSCPastPapers', 'PPSCQuiz', 'PPSCSyllabus',
-  'PPSCTest', 'Punjab10thDateSheet', 'Punjab10thGazette', 'Punjab10thGuessPapers', 'Punjab10thLectures',
-  'Punjab10thNotes', 'Punjab10thPairingScheme', 'Punjab10thPastPapers', 'Punjab10thQuiz', 'Punjab10thResult',
-  'Punjab10thRollNoSlip', 'Punjab10thSyllabus', 'Punjab10thTest', 'Punjab10thTextBooks', 'Punjab11thDateSheet',
-  'Punjab11thGazette', 'Punjab11thGuessPapers', 'Punjab11thLectures', 'Punjab11thNotes', 'Punjab11thPairingScheme',
-  'Punjab11thPastPapers', 'Punjab11thQuiz', 'Punjab11thResult', 'Punjab11thRollNoSlip', 'Punjab11thSyllabus',
-  'Punjab11thTest', 'Punjab11thTextBooks', 'Punjab12thDateSheet', 'Punjab12thGazette', 'Punjab12thGuessPapers',
-  'Punjab12thLectures', 'Punjab12thNotes', 'Punjab12thPairingScheme', 'Punjab12thPastPapers', 'Punjab12thQuiz',
-  'Punjab12thResult', 'Punjab12thRollNoSlip', 'Punjab12thSyllabus', 'Punjab12thTest', 'Punjab12thTextBooks',
-  'Punjab9thDateSheet', 'Punjab9thGazette', 'Punjab9thGuessPapers', 'Punjab9thLectures', 'Punjab9thNotes',
-  'Punjab9thPairingScheme', 'Punjab9thPastPapers', 'Punjab9thQuiz', 'Punjab9thResult', 'Punjab9thRollNoSlip',
-  'Punjab9thSyllabus', 'Punjab9thTest', 'Punjab9thTextBooks', 'PunjabECATPastPapers', 'PunjabMDCATLectures',
-  'PunjabMDCATNotes', 'PunjabMDCATPastPapers', 'PunjabMDCATQuiz', 'PunjabMDCATResult', 'PunjabMDCATRollNoSlip',
-  'PunjabMDCATSyllabus', 'PunjabMDCATTest', 'PunjabMDCATTextBooks', 'PunjabOtherUniversityGuessPapers',
-  'PunjabOtherUniversityNotes', 'PunjabOtherUniversityPastPapers', 'PunjabOtherUniversityQuiz',
-  'PunjabOtherUniversitySyllabus', 'PunjabOtherUniversityTest', 'PunjabOtherUniversityTextBooks',
-  'PunjabUniversityEntryTestGuessPapers', 'PunjabUniversityEntryTestNotes', 'PunjabUniversityEntryTestPastPapers',
-  'PunjabUniversityEntryTestQuiz', 'PunjabUniversityEntryTestSyllabus', 'PunjabUniversityEntryTestTest',
-  'SPSCNotes', 'SPSCPastPapers', 'SPSCQuiz', 'SPSCSyllabus', 'SPSCTest', 'SPSCTextBooks',
-  'Sindh10thDateSheet', 'Sindh10thGazette', 'Sindh10thGuessPapers', 'Sindh10thLectures', 'Sindh10thNotes',
-  'Sindh10thPairingScheme', 'Sindh10thPastPapers', 'Sindh10thQuiz', 'Sindh10thResult', 'Sindh10thRollNoSlip',
-  'Sindh10thSyllabus', 'Sindh10thTest', 'Sindh10thTextBooks', 'Sindh11thDateSheet', 'Sindh11thGazette',
-  'Sindh11thGuessPapers', 'Sindh11thLectures', 'Sindh11thNotes', 'Sindh11thPairingScheme', 'Sindh11thPastPapers',
-  'Sindh11thQuiz', 'Sindh11thResult', 'Sindh11thRollNoSlip', 'Sindh11thSyllabus', 'Sindh11thTest',
-  'Sindh11thTextBooks', 'Sindh12thDateSheet', 'Sindh12thGazette', 'Sindh12thGuessPapers', 'Sindh12thLectures',
-  'Sindh12thNotes', 'Sindh12thPairingScheme', 'Sindh12thPastPapers', 'Sindh12thQuiz', 'Sindh12thResult',
-  'Sindh12thRollNoSlip', 'Sindh12thSyllabus', 'Sindh12thTest', 'Sindh12thTextBooks', 'Sindh9thDateSheet',
-  'Sindh9thGazette', 'Sindh9thGuessPapers', 'Sindh9thLectures', 'Sindh9thNotes', 'Sindh9thPairingScheme',
-  'Sindh9thPastPapers', 'Sindh9thQuiz', 'Sindh9thResult', 'Sindh9thRollNoSlip', 'Sindh9thSyllabus',
-  'Sindh9thTest', 'Sindh9thTextBooks', 'SindhMDCATLectures', 'SindhMDCATNotes', 'SindhMDCATPastPapers',
-  'SindhMDCATQuiz', 'SindhMDCATResult', 'SindhMDCATRollNoSlip', 'SindhMDCATSyllabus', 'SindhMDCATTest',
-  'SindhMDCATTextBooks', 'SindhOtherUniversityGuessPapers', 'SindhOtherUniversityNotes',
-  'SindhOtherUniversityPastPapers', 'SindhOtherUniversityQuiz', 'SindhOtherUniversitySyllabus',
-  'SindhOtherUniversityTest', 'SindhOtherUniversityTextBooks', 'SindhUniversityEntryTestGuessPapers',
-  'SindhUniversityEntryTestNotes', 'SindhUniversityEntryTestPastPapers', 'SindhUniversityEntryTestQuiz',
-  'SindhUniversityEntryTestSyllabus', 'SindhUniversityEntryTestTest', 'UrduCalligraphy', 'VirtualUniversityGuessPapers',
-  'VirtualUniversityLectures', 'VirtualUniversityNotes', 'VirtualUniversityPastPapers', 'VirtualUniversityQuiz',
-  'VirtualUniversityRollNoSlip', 'VirtualUniversitySyllabus', 'VirtualUniversityTest', 'VirtualUniversityTextBooks',
-];
-
-// Category definitions
-const categoryDefinitions = {
-  School: {
-    provinces: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
-    classes: ['9th', '10th'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'DateSheet', 'Result', 'RollNoSlip', 'Gazette', 'PairingScheme'],
-  },
-  College: {
-    provinces: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
-    classes: ['11th', '12th'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'DateSheet', 'Result', 'RollNoSlip', 'Gazette', 'PairingScheme'],
-  },
-  Cambridge: {
-    classes: ['OLevel', 'ALevel'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus'],
-  },
-  'Entry Test': {
-    classes: ['PMA', 'UniversityEntryTest', 'MDCAT', 'ECAT', 'NUMS', 'AMC'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'Result', 'RollNoSlip'],
-    provincesFor: {
-      MDCAT: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
-      UniversityEntryTest: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
-    },
-  },
-  University: {
-    classes: ['BDS', 'MBBS', 'AllamaIqbalOpenUniversity', 'VirtualUniversity', 'OtherUniversity'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'RollNoSlip'],
-    provincesFor: {
-      OtherUniversity: ['Punjab', 'Sindh', 'KhyberPakhtunkhwa', 'Balochistan', 'AzadJammuKashmir', 'GilgitBaltistan', 'Federal'],
-    },
-  },
-  'Competition Exam': {
-    classes: ['CSS', 'NTS', 'AJKPSC', 'KPSC', 'BPSC', 'SPSC', 'FPSC', 'PPSC', 'PMS'],
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Quiz', 'Test', 'Syllabus', 'Result'],
-  },
-  General: {
-    contentTypes: ['Notes', 'TextBooks', 'PastPapers', 'Lectures', 'Quiz', 'Test', 'Syllabus', 'GuessPapers', 'DateSheet', 'Gazette', 'PairingScheme', 'UrduCalligraphy', 'EnglishCalligraphy', 'EnglishLanguage'],
-  },
-};
-
-// Helper function to parse collection name and extract metadata
-const parseCollectionName = (collectionName) => {
-  let category, province, classLevel, contentType;
-
-  // General collections
-  if (categoryDefinitions.General.contentTypes.includes(collectionName)) {
-    return { category: 'General', province: null, classLevel: null, contentType: collectionName };
-  }
-
-  // Competition Exam collections
-  const compExams = categoryDefinitions['Competition Exam'].classes;
-  if (compExams.some((exam) => collectionName.startsWith(exam))) {
-    const exam = compExams.find((e) => collectionName.startsWith(e));
-    contentType = collectionName.replace(exam, '');
-    return { category: 'Competition Exam', province: null, classLevel: exam, contentType };
-  }
-
-  // Cambridge collections
-  const cambridgeClasses = categoryDefinitions.Cambridge.classes;
-  if (cambridgeClasses.some((cls) => collectionName.startsWith(cls))) {
-    const cls = cambridgeClasses.find((c) => collectionName.startsWith(c));
-    contentType = collectionName.replace(cls, '');
-    return { category: 'Cambridge', province: null, classLevel: cls, contentType };
-  }
-
-  // University collections
-  const uniClasses = categoryDefinitions.University.classes;
-  if (uniClasses.some((cls) => collectionName.startsWith(cls))) {
-    const cls = uniClasses.find((c) => collectionName.startsWith(c));
-    contentType = collectionName.replace(cls, '');
-    return { category: 'University', province: null, classLevel: cls, contentType };
-  }
-
-  // Entry Test collections
-  const entryTestClasses = categoryDefinitions['Entry Test'].classes;
-  if (entryTestClasses.some((cls) => collectionName.startsWith(cls))) {
-    const cls = entryTestClasses.find((c) => collectionName.startsWith(c));
-    contentType = collectionName.replace(cls, '');
-    return { category: 'Entry Test', province: null, classLevel: cls, contentType };
-  }
-
-  // School and College collections
-  const provinces = categoryDefinitions.School.provinces;
-  const schoolClasses = categoryDefinitions.School.classes;
-  const collegeClasses = categoryDefinitions.College.classes;
-  const contentTypes = [...categoryDefinitions.School.contentTypes, ...categoryDefinitions.College.contentTypes];
-
-  for (const province of provinces) {
-    if (collectionName.startsWith(province)) {
-      const remaining = collectionName.replace(province, '');
-      const cls = [...schoolClasses, ...collegeClasses].find((c) => remaining.startsWith(c));
-      if (cls) {
-        contentType = remaining.replace(cls, '');
-        category = schoolClasses.includes(cls) ? 'School' : 'College';
-        return { category, province, classLevel: cls, contentType };
-      }
-    }
-  }
-
-  return { category: 'General', province: null, classLevel: null, contentType: collectionName };
-};
-
-export async function getStaticProps() {
-  try {
-    let allData = [];
-    let classCategories = [];
-    let boardCategories = [];
-    let subjectCategories = [];
-    let categoryCounts = {
-      School: { count: 0, classes: {} },
-      College: { count: 0, classes: {} },
-      Cambridge: { count: 0, classes: {} },
-      'Entry Test': { count: 0, classes: {} },
-      University: { count: 0, classes: {} },
-      'Competition Exam': { count: 0, classes: {} },
-      General: { count: 0, contentTypes: {} },
-    };
-
-    for (const collectionName of allCollections) {
-      try {
-        const collRef = collection(db, collectionName);
-        const snapshot = await getDocs(collRef);
-
-        if (!snapshot.empty) {
-          const { category, province, classLevel, contentType } = parseCollectionName(collectionName);
-
-          // Update category counts
-          if (category in categoryCounts) {
-            categoryCounts[category].count += snapshot.size;
-            if (classLevel) {
-              categoryCounts[category].classes[classLevel] = (categoryCounts[category].classes[classLevel] || 0) + snapshot.size;
-            } else if (category === 'General') {
-              categoryCounts[category].contentTypes[contentType] = (categoryCounts[category].contentTypes[contentType] || 0) + snapshot.size;
-            }
-          }
-
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-
-            // Handle resources with subjects array (e.g., PastPapers, Notes)
-            if (data.metadata?.resourceType === 'PDF' && data.academicInfo?.subject) {
-              const subjects = Array.isArray(data.academicInfo.subject) ? data.academicInfo.subject : [data.academicInfo.subject];
-              subjects.forEach((subject, index) => {
-                if (data.content?.fileUrl) {
-                  const driveId = extractDriveId(data.content.fileUrl);
-                  const resource = {
-                    id: `${collectionName}-${doc.id}-${index}`,
-                    title: data.content.title || `${category} ${classLevel || ''} ${contentType} - ${subject}`,
-                    description: data.content.description || `Access ${contentType} for ${subject} ${classLevel || ''} ${province || ''}`,
-                    subject: subject,
-                    class: classLevel || 'General',
-                    board: data.academicInfo.board || 'N/A',
-                    year: data.academicInfo.year || 'N/A',
-                    type: contentType,
-                    url: data.content.fileUrl,
-                    downloadUrl: driveId ? `https://drive.google.com/uc?export=download&id=${driveId}` : data.content.fileUrl,
-                    driveId,
-                    collection: collectionName,
-                    documentId: doc.id,
-                    itemIndex: index,
-                    // Updated path to class/type/documentId format
-                    path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
-                    author: data.userInfo?.authorName || getRandomAuthor(),
-                    category,
-                    province,
-                    authorImage: data.userInfo?.authorImage || null, // Added for potential author image
-                  };
-                  allData.push(resource);
-                }
-              });
-            } else if (data.metadata?.resourceType === 'Lecture' && data.content?.youtubeUrl) {
-              // Handle lecture resources
-              const resource = {
-                id: `${collectionName}-${doc.id}`,
-                title: data.content.title || `${category} ${classLevel || ''} ${contentType}`,
-                description: data.content.description || `Watch ${contentType} for ${classLevel || ''} ${province || ''}`,
-                subject: data.academicInfo?.subject || 'General',
-                class: classLevel || 'General',
-                board: data.academicInfo?.board || 'N/A',
-                year: data.academicInfo?.year || 'N/A',
-                type: contentType,
-                url: data.content.youtubeUrl,
-                downloadUrl: null,
-                driveId: null,
-                collection: collectionName,
-                documentId: doc.id,
-                itemIndex: 0,
-                // Updated path to class/type/documentId format
-                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
-                author: data.userInfo?.authorName || getRandomAuthor(),
-                category,
-                province,
-                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
-              };
-              allData.push(resource);
-            } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
-              // Handle quiz resources
-              const resource = {
-                id: `${collectionName}-${doc.id}`,
-                title: data.content.title || `${category} ${classLevel || ''} Quiz`,
-                description: data.content.description || `Take a quiz for ${classLevel || ''} ${province || ''}`,
-                subject: data.academicInfo?.subject || 'General',
-                class: classLevel || 'General',
-                board: data.academicInfo?.board || 'N/A',
-                year: data.academicInfo?.year || 'N/A',
-                type: contentType,
-                url: data.content.quizImageUrl || '#',
-                downloadUrl: null,
-                driveId: null,
-                collection: collectionName,
-                documentId: doc.id,
-                itemIndex: 0,
-                // Updated path to class/type/documentId format
-                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
-                author: data.userInfo?.authorName || getRandomAuthor(),
-                category,
-                province,
-                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
-                quiz: data.academicInfo.quiz,
-              };
-              allData.push(resource);
-            }
-          });
-        }
-      } catch (error) {
-        console.error(`Error fetching collection ${collectionName}:`, error);
-      }
-    }
-
-    // Generate class categories for School and College
-    for (const category of ['School', 'College']) {
-      const classes = categoryDefinitions[category].classes;
-      for (const cls of classes) {
-        const count = categoryCounts[category].classes[cls] || 0;
-        if (count > 0) {
-          classCategories.push({
-            id: `${category}-${cls}`,
-            name: `${cls} Class`,
-            count,
-            category,
-          });
-        }
-      }
-    }
-
-    // Generate class categories for Cambridge, Entry Test, and University
-    for (const category of ['Cambridge', 'Entry Test', 'University']) {
-      const classes = categoryDefinitions[category].classes;
-      for (const cls of classes) {
-        const count = categoryCounts[category].classes[cls] || 0;
-        if (count > 0) {
-          classCategories.push({
-            id: `${category}-${cls}`,
-            name: cls.replace(/([A-Z])/g, ' $1').trim(),
-            count,
-            category,
-          });
-        }
-      }
-    }
-
-    // Generate board categories
-    const boardsSet = new Set();
-    allData.forEach((item) => {
-      if (item.board && item.board !== 'N/A') boardsSet.add(item.board);
-    });
-    boardCategories = Array.from(boardsSet).map((board, index) => ({
-      id: index + 1,
-      name: `${board} Board`,
-      count: allData.filter((item) => item.board === board).length,
-    }));
-
-    // Generate subject categories
-    const subjectsSet = new Set();
-    allData.forEach((item) => {
-      if (item.subject && item.subject !== 'General') subjectsSet.add(item.subject);
-    });
-    subjectCategories = Array.from(subjectsSet).map((subject, index) => ({
-      id: index + 1,
-      name: subject,
-      count: allData.filter((item) => item.subject === subject).length,
-      icon: 'https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9',
-    }));
-
-    // Generate counts for specific entry tests
-    const ecatCount = allData.filter((item) => item.collection.includes('ECAT')).length;
-    const mdcatCount = allData.filter((item) => item.collection.includes('MDCAT')).length;
-    const numsCount = allData.filter((item) => item.collection.includes('NUMS')).length;
-    const amcCount = allData.filter((item) => item.collection.includes('AMC')).length;
-    const pmaCount = allData.filter((item) => item.collection.includes('PMA')).length;
-
-    // Generate counts for competition exams
-    const cssCount = allData.filter((item) => item.collection.includes('CSS')).length;
-    const ntsCount = allData.filter((item) => item.collection.includes('NTS')).length;
-    const ppscCount = allData.filter((item) => item.collection.includes('PPSC')).length;
-
-    // Featured data: Latest 8 resources sorted by upload date
-    const featuredData = allData
-      .sort((a, b) => (b.year || '9999') - (a.year || '9999'))
-      .slice(0, 8);
-
-    return {
-      props: {
-        resources: featuredData,
-        allResources: allData,
-        classCategories,
-        boardCategories,
-        subjectCategories,
-        ecatCount,
-        mdcatCount,
-        numsCount,
-        amcCount,
-        pmaCount,
-        cssCount,
-        ntsCount,
-        ppscCount,
-      },
-      revalidate: 86400,
-    };
-  } catch (error) {
-    console.error('Error in getStaticProps:', error);
-    return {
-      props: {
-        resources: [],
-        allResources: [],
-        classCategories: [],
-        boardCategories: [],
-        subjectCategories: [],
-        ecatCount: 0,
-        mdcatCount: 0,
-        numsCount: 0,
-        amcCount: 0,
-        pmaCount: 0,
-        cssCount: 0,
-        ntsCount: 0,
-        ppscCount: 0,
-      },
-      revalidate: 3600,
-    };
-  }
-}
-
-// Enhanced News Card Component
-const NewsCard = memo(({ news, isActive, onClick }) => (
-  <div
-    onClick={onClick}
-    className={`p-4 border rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
-      isActive
-        ? 'border-red-500 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 shadow-lg'
-        : 'border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-600 hover:shadow-md'
-    }`}
-  >
-    <div className="flex items-start space-x-3">
-      <div className={`w-3 h-3 rounded-full mt-2 animate-pulse ${isActive ? 'bg-red-500' : 'bg-gray-300'}`} />
-      <div className="flex-1">
-        <h4 className={`text-sm font-semibold leading-tight ${isActive ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-gray-200'}`}>
-          {news.title}
-        </h4>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-          <Calendar className="h-3 w-3 mr-1" />
-          {news.date}
-        </p>
-      </div>
-    </div>
-  </div>
-));
-
-NewsCard.displayName = 'NewsCard';
-
-// Main Component
-const TaleemSpot = ({
-  resources,
-  allResources,
-  classCategories,
-  boardCategories,
-  subjectCategories,
-  ecatCount,
-  mdcatCount,
-  numsCount,
-  amcCount,
-  pmaCount,
-  cssCount,
-  ntsCount,
-  ppscCount,
-}) => {
+const TaleemSpot = ({ resources, allResources, classCategories, boardCategories, subjectCategories }) => {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Home');
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const [filteredData, setFilteredData] = useState(resources || []);
-  const [activeNews, setActiveNews] = useState(0);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
 
-  // Updated news data to reflect broader categories
-  const latestNews = useMemo(() => [
-    {
-      id: 1,
-      title: '9th Class Biology 2024 - Lahore Board',
-      date: 'Just Now',
-      content: 'Latest 9th Class Biology past paper from Lahore Board for 2024 examination is now available for download.',
-      type: 'trending',
+  // Navigation menu structure with dropdowns
+  const navMenus = [
+    { 
+      name: 'Home',
+      path: '/',
+      dropdownItems: []
     },
-    {
-      id: 2,
-      title: 'CSS 2024 General Knowledge Notes',
-      date: '2 hours ago',
-      content: 'Comprehensive notes for CSS 2024 General Knowledge section now available.',
-      type: 'new',
+    { 
+      name: 'Past Papers',
+      path: '#',
+      dropdownItems: classCategories.map(cat => ({
+        name: cat.name,
+        path: `/${cat.id}`
+      }))
     },
-    {
-      id: 3,
-      title: 'MDCAT 2024 Preparation Guide',
-      date: '5 hours ago',
-      content: 'Complete preparation guide and past papers for MDCAT 2024 entrance test.',
-      type: 'popular',
+    { 
+      name: 'Subjects',
+      path: '#',
+      dropdownItems: subjectCategories.slice(0, 8).map(subject => ({
+        name: subject.name,
+        path: `/subject/${subject.name}`
+      }))
     },
-    {
-      id: 4,
-      title: 'O Level Mathematics Past Papers 2024',
-      date: '1 day ago',
-      content: 'Access the latest O Level Mathematics past papers for 2024.',
-      type: 'new',
-    },
-  ], []);
+    { 
+      name: 'Boards',
+      path: '#',
+      dropdownItems: boardCategories.slice(0, 8).map(board => ({
+        name: board.name,
+        path: `/board/${board.name.replace(' Board', '')}`
+      }))
+    }
+  ];
 
-  // Search functionality
+  // Handle search functionality
   useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      if (searchTerm.trim() === '') {
-        setFilteredData(resources);
-        setSearchSuggestions([]);
-      } else {
-        const searchTerms = searchTerm.toLowerCase().split(' ');
-        const filtered = allResources.filter((item) =>
-          searchTerms.every(
-            (term) =>
-              item.title.toLowerCase().includes(term) ||
-              item.subject.toLowerCase().includes(term) ||
-              item.class.toLowerCase().includes(term) ||
-              item.board.toLowerCase().includes(term) ||
-              item.year.toString().includes(term) ||
-              item.author.toLowerCase().includes(term) ||
-              item.category.toLowerCase().includes(term) ||
-              item.province?.toLowerCase().includes(term)
-          )
+    if (searchTerm.trim() === '') {
+      setFilteredData(resources);
+      setSearchSuggestions([]);
+    } else {
+      const searchTerms = searchTerm.toLowerCase().split(' ');
+      const filtered = allResources.filter(item => {
+        // Check if ALL search terms match any of the fields
+        return searchTerms.every(term => 
+          item.title.toLowerCase().includes(term) || 
+          item.description.toLowerCase().includes(term) ||
+          item.subject.toLowerCase().includes(term) ||
+          item.class.toLowerCase().includes(term) ||
+          item.board.toLowerCase().includes(term) ||
+          item.year.toString().includes(term)
         );
-
-        setFilteredData(filtered);
-
-        if (searchTerm.length > 2) {
-          const suggestions = [];
-
-          // Subject suggestions
-          subjectCategories.forEach((subject) => {
-            if (subject.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-              suggestions.push({ text: subject.name, type: 'subject' });
+      });
+      
+      setFilteredData(filtered);
+      
+      // Generate search suggestions
+      if (searchTerm.length > 2) {
+        const suggestions = [];
+        
+        // Add subject suggestions
+        subjectCategories.forEach(subject => {
+          if (subject.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.push({ text: subject.name, type: 'subject' });
+          }
+        });
+        
+        // Add board suggestions
+        boardCategories.forEach(board => {
+          if (board.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.push({ text: board.name, type: 'board' });
+          }
+        });
+        
+        // Add class suggestions
+        classCategories.forEach(cls => {
+          if (cls.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.push({ text: cls.name, type: 'class' });
+          }
+        });
+        
+        // Add year suggestions
+        const years = [...new Set(allResources.map(item => item.year))];
+        years.forEach(year => {
+          if (year.toString().includes(searchTerm)) {
+            suggestions.push({ text: year.toString(), type: 'year' });
+          }
+        });
+        
+        // Add combined suggestions
+        subjectCategories.forEach(subject => {
+          classCategories.forEach(cls => {
+            const combined = `${subject.name} ${cls.name}`;
+            if (combined.toLowerCase().includes(searchTerm.toLowerCase())) {
+              suggestions.push({ text: combined, type: 'combined' });
             }
           });
-
-          // Board suggestions
-          boardCategories.forEach((board) => {
-            if (board.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-              suggestions.push({ text: board.name, type: 'board' });
-            }
-          });
-
-          // Category suggestions
-          Object.keys(categoryDefinitions).forEach((category) => {
-            if (category.toLowerCase().includes(searchTerm.toLowerCase())) {
-              suggestions.push({ text: category, type: 'category' });
-            }
-          });
-
-          // Author suggestions
-          const authorSuggestions = [...new Set(allResources.map((item) => item.author))]
-            .filter((author) => author.toLowerCase().includes(searchTerm.toLowerCase()))
-            .slice(0, 3);
-          authorSuggestions.forEach((author) => {
-            suggestions.push({ text: author, type: 'author' });
-          });
-
-          setSearchSuggestions(suggestions.slice(0, 8));
-        } else {
-          setSearchSuggestions([]);
-        }
+        });
+        
+        setSearchSuggestions(suggestions.slice(0, 10)); // Limit to 10 suggestions
+      } else {
+        setSearchSuggestions([]);
       }
-    }, 300);
+    }
+  }, [searchTerm, resources, allResources, subjectCategories, boardCategories, classCategories]);
 
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, resources, allResources, subjectCategories, boardCategories]);
+  // Toggle dropdown menu
+  const toggleDropdown = (e, menuName) => {
+    e.stopPropagation();
+    if (openDropdown === menuName) {
+      setOpenDropdown(null);
+    } else {
+      setOpenDropdown(menuName);
+    }
+  };
 
-  // Auto-rotate news
+  // Close dropdown when clicking outside
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveNews((prev) => (prev + 1) % latestNews.length);
-    }, 5000);
+    const handleClickOutside = () => {
+      setOpenDropdown(null);
+    };
 
-    return () => clearInterval(interval);
-  }, [latestNews.length]);
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // ResourceCard Component
+  const ResourceCard = ({ resource }) => {
+    return (
+      <a 
+        href={resource.path}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+      >
+        <div className="p-4">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <BookOpen className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">
+                {resource.title}
+              </h3>
+              <p className="text-xs text-gray-600 mt-1">
+                {resource.subject} • {resource.class} {resource.class.includes('ECAT') || resource.class.includes('MDCAT') ? '' : 'Class'}
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+            {resource.description}
+          </p>
+          <div className="flex items-center justify-between mt-2">
+            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+              {resource.year}
+            </span>
+            <div className="flex items-center text-blue-600 text-xs">
+              <ExternalLink className="h-3 w-3 mr-1" />
+              <span>Open</span>
+            </div>
+          </div>
+        </div>
+      </a>
+    );
+  };
+
+  // AdSense Banner Component
+  const AdSenseBanner = ({ slot = "1234567890", format = "auto" }) => {
+    useEffect(() => {
+      try {
+        if (typeof window !== 'undefined' && window.adsbygoogle) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch (err) {
+        console.log("AdSense error:", err);
+      }
+    }, []);
+
+    return (
+      <div className="my-4">
+        <ins 
+          className="adsbygoogle"
+          style={{display: 'block'}}
+          data-ad-client="ca-pub-1926773803487692"
+          data-ad-slot={slot}
+          data-ad-format={format}
+          data-full-width-responsive="true"
+        />
+      </div>
+    );
+  };
 
   return (
     <>
       <Head>
-        <title>TaleemSpot - Pakistan's #1 Educational Resource Platform | Past Papers, Notes & Study Materials</title>
-        <meta
-          name="description"
-          content="Access comprehensive educational resources including past papers, notes, guess papers, lectures, quizzes, and study materials for 9th-12th classes, ECAT, MDCAT, CSS, NTS, and more from all Pakistani boards and institutions. Download free educational content."
-        />
-        <meta
-          name="keywords"
-          content="past papers, Punjab board, Sindh board, KPK board, Balochistan board, AJK board, Federal board, Cambridge, O Level, A Level, MDCAT, ECAT, CSS, NTS, PPSC, study notes, guess papers, pairing scheme, quizzes, lectures"
-        />
-        <meta property="og:title" content="TaleemSpot - Pakistan's Premier Educational Platform" />
-        <meta
-          property="og:description"
-          content="Download past papers, notes, lectures, quizzes, and study materials for all Pakistani boards, Cambridge, and competitive exams. Free educational resources for students."
-        />
+        <title>TaleemSpot - Pakistan&apos;s #1 Education Resource Platform</title>
+        <meta name="description" content="Access past papers, notes, and educational resources for 9th, 10th, 11th, 12th classes and entry tests from all Punjab boards." />
+        <meta name="keywords" content="past papers, Punjab board, education, Pakistan, 9th class, 10th class, ECAT, MDCAT" />
+        <meta property="og:title" content="TaleemSpot - Pakistan's #1 Education Resource Platform" />
+        <meta property="og:description" content="Access past papers, notes, and educational resources for all Punjab boards." />
         <meta property="og:url" content="https://taleemspot.com" />
         <meta property="og:type" content="website" />
-        <meta
-          property="og:image"
-          content="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9"
-        />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="TaleemSpot - Educational Resources" />
-        <meta name="twitter:description" content="Access past papers, notes, lectures, and study materials for Pakistani students" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <link rel="canonical" href="https://taleemspot.com" />
-        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-
-        {/* Schema.org structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'EducationalOrganization',
-              name: 'TaleemSpot',
-              description: "Pakistan's premier educational resource platform",
-              url: 'https://taleemspot.com',
-              logo: 'https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9',
-              sameAs: ['https://www.facebook.com/taleemspot', 'https://www.twitter.com/taleemspot'],
-            }),
-          }}
-        />
       </Head>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header with App Install Banner */}
+        <div className="bg-gradient-to-r from-blue-900 via-purple-800 to-indigo-900 text-white py-3 px-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <span className="text-sm md:text-base font-medium flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2v-2a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
+              </svg>
+              <span className="hidden md:inline">Download</span> TaleemSpot App <span className="hidden md:inline">- Access Anywhere!</span>
+            </span>
+            <div className="hidden md:flex ml-2 items-center">
+              <span className="bg-yellow-500 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
+            </div>
+          </div>
+          <a 
+            href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
+            target="_blank"
+            rel="noopener noreferrer" 
+            className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 512 512">
+              <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
+            </svg>
+            Install App
+          </a>
+        </div>
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          searchSuggestions={searchSuggestions}
-          classCategories={classCategories}
-          subjectCategories={subjectCategories}
-          boardCategories={boardCategories}
-        />
+        {/* Navigation */}
+        <nav className="bg-white shadow-md sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4">
+            {/* Desktop Header */}
+            <div className="hidden md:flex justify-between items-center py-3">
+              {/* Logo */}
+              <Link href="/" className="flex items-center space-x-3">
+                <img 
+                  src="https://firebasestorage.googleapis.com/v0/b/proskill-db056.appspot.com/o/logo.jpg?alt=media&token=77f87120-e2bd-420e-b2bd-a25f840cb3b9" 
+                  alt="TaleemSpot Logo" 
+                  className="h-12 w-12 rounded-full"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="%2316a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>';
+                  }}
+                />
+                <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">TaleemSpot</span>
+              </Link>
+
+              {/* Search Bar - Desktop */}
+              <div className="flex flex-1 max-w-2xl mx-8">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search Past Papers, Subjects, Boards..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                      {searchSuggestions.map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+                          onClick={() => setSearchTerm(suggestion.text)}
+                        >
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <span>{suggestion.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile Header */}
+            <div className="flex md:hidden justify-between items-center py-3">
+              {/* Search Button */}
+              <button 
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100"
+              >
+                <Search className="h-6 w-6" />
+              </button>
+              
+              {/* Logo */}
+              <Link href="/" className="text-center">
+                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                  TaleemSpot
+                </span>
+              </Link>
+              
+              {/* Menu Button */}
+              <button 
+                className="p-2 rounded-lg hover:bg-gray-100"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
+
+            {/* Mobile Search Overlay */}
+            {mobileSearchOpen && (
+              <div className="md:hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex flex-col">
+                <div className="bg-white p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">Search</h3>
+                    <button onClick={() => setMobileSearchOpen(false)}>
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search Past Papers, Subjects, Boards..."
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchSuggestions.length > 0 && (
+                    <div className="mt-2 bg-white rounded-lg max-h-60 overflow-y-auto">
+                      {searchSuggestions.map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+                          onClick={() => {
+                            setSearchTerm(suggestion.text);
+                            setMobileSearchOpen(false);
+                          }}
+                        >
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <span>{suggestion.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* Navigation Tabs with Dropdowns */}
+        <div className="bg-green-600 text-white shadow-md">
+          <div className="max-w-7xl mx-auto">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex">
+              {navMenus.map((menu) => (
+                <div key={menu.name} className="relative group">
+                  <button
+                    onClick={(e) => toggleDropdown(e, menu.name)}
+                    className={`px-6 py-4 flex items-center space-x-1 hover:bg-green-700 transition-colors ${activeTab === menu.name ? 'bg-green-700' : ''}`}
+                  >
+                    <span>{menu.name}</span>
+                    {menu.dropdownItems.length > 0 && (
+                      <ChevronDown className={`h-4 w-4 transition-transform ${openDropdown === menu.name ? 'transform rotate-180' : ''}`} />
+                    )}
+                  </button>
+                  
+                  {menu.dropdownItems.length > 0 && openDropdown === menu.name && (
+                    <div className="absolute top-full left-0 bg-white text-gray-800 shadow-lg rounded-b-lg min-w-[200px] z-50 max-h-[400px] overflow-y-auto">
+                      {menu.dropdownItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.path}
+                          className="block px-4 py-3 hover:bg-gray-100 border-b border-gray-100 last:border-0"
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Mobile Navigation */}
+            <div className={`${isMenuOpen ? 'block' : 'hidden'} md:hidden`}>
+              {navMenus.map((menu) => (
+                <div key={menu.name}>
+                  <button
+                    onClick={(e) => toggleDropdown(e, menu.name)}
+                    className={`w-full flex justify-between items-center px-4 py-3 border-b border-green-500 ${openDropdown === menu.name ? 'bg-green-700' : ''}`}
+                  >
+                    <span>{menu.name}</span>
+                    {menu.dropdownItems.length > 0 && (
+                      <ChevronDown className={`h-4 w-4 transition-transform ${openDropdown === menu.name ? 'transform rotate-180' : ''}`} />
+                    )}
+                  </button>
+                  
+                  {menu.dropdownItems.length > 0 && openDropdown === menu.name && (
+                    <div className="bg-green-800 max-h-[300px] overflow-y-auto">
+                      {menu.dropdownItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.path}
+                          className="block px-8 py-2 hover:bg-green-700 border-b border-green-700 last:border-0"
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Sidebar */}
             <div className="lg:col-span-1">
-              {/* Latest News Section */}
-              <SidebarSection
-                title="Latest News"
-                subtitle={`Stay Up to Date with TaleemSpot - ${new Date().getDate()}`}
-                icon={TrendingUp}
-                colorScheme="red"
-                showSerialNumbers={true}
-                items={latestNews.map((news, index) => ({
-                  name: news.title,
-                  badge: index === 0 ? 'Trending News' : null,
-                  href: '#',
-                }))}
-                viewAllLink="/all-news"
-                badgeColors={{
-                  'Trending News': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
-                }}
-              />
+              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="flex items-center justify-center w-14 h-14 bg-green-100 rounded-lg">
+                    <BookOpen className="h-8 w-8 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-800 text-lg">TaleemSpot</h3>
+                    <p className="text-sm text-gray-600">Education Portal</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-center font-medium">
+                    Latest Resources
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Total Resources</span>
+                    <span className="font-bold text-green-600">{allResources.length}+</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2 text-sm mt-2">
+                    <Users className="h-4 w-4 text-green-600" />
+                    <span className="text-gray-600">Join 10,000+ Students</span>
+                  </div>
+                </div>
+              </div>
 
-              {/* Classes Section */}
-              <SidebarSection
-                title="Classes"
-                subtitle="Explore School & College Resources"
-                icon={BookOpen}
-                colorScheme="green"
-                showSerialNumbers={true}
-                items={classCategories
-                  .filter((cat) => ['School', 'College'].includes(cat.category))
-                  .map((cat) => ({
-                    name: cat.name,
-                    count: cat.count,
-                    href: `/${cat.id}`,
-                  }))}
-                viewAllLink="/all-classes"
-              />
+              {/* Class Categories */}
+              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h3 className="font-bold text-gray-800 mb-3 pb-2 border-b flex items-center">
+                  <BookOpen className="h-5 w-5 mr-2 text-green-600" />
+                  Class
+                </h3>
+                <div className="space-y-2">
+                  {classCategories.slice(0, 4).map((category) => (
+                    <Link
+                      href={`/${category.id}`}
+                      key={category.id}
+                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <span className="text-sm font-medium text-gray-700">
+                        {category.name}
+                      </span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        {category.count}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                {classCategories.length > 4 && (
+                  <Link href="/all-classes" className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Classes
+                  </Link>
+                )}
+              </div>
 
-              {/* Entry Test Section */}
-              <SidebarSection
-                title="Entry Test"
-                subtitle="Prepare for Entry Tests"
-                icon={Award}
-                colorScheme="purple"
-                showSerialNumbers={true}
-                items={[
-                  { name: 'MDCAT', count: mdcatCount, href: '/MDCAT' },
-                  { name: 'ECAT', count: ecatCount, href: '/ECAT' },
-                  { name: 'NUMS', count: numsCount, href: '/NUMS' },
-                  { name: 'AMC', count: amcCount, href: '/AMC' },
-                  { name: 'PMA', count: pmaCount, href: '/PMA' },
-                ]}
-                viewAllLink="/entry-tests"
-              />
+              {/* Board Categories */}
+              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h3 className="font-bold text-gray-800 mb-3 pb-2 border-b flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-green-600" />
+                  Boards
+                </h3>
+                <div className="space-y-2">
+                  {boardCategories.slice(0, 4).map((board) => (
+                    <Link
+                      href={`/board/${board.name.replace(' Board', '')}`}
+                      key={board.id}
+                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <span className="text-sm font-medium text-gray-700">
+                        {board.name}
+                      </span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        {board.count}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                {boardCategories.length > 4 && (
+                  <Link href="/all-boards" className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Boards
+                  </Link>
+                )}
+              </div>
             </div>
 
             {/* Main Content Area */}
             <div className="lg:col-span-2">
-              {/* Search Results Header */}
-              {searchTerm && (
-                <div className="mb-6 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center space-x-3">
-                    <Search className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <span className="text-gray-700 dark:text-gray-300 text-lg">
-                        Search results for: <span className="font-bold text-blue-600 dark:text-blue-400">"{searchTerm}"</span>
-                      </span>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Found {filteredData.length} results
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Top AdSense Banner */}
+              <AdSenseBanner slot="top-banner-slot" format="horizontal" />
 
-              {/* Content Grid - Exactly 8 Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-                {(searchTerm ? filteredData.slice(0, 12) : filteredData.slice(0, 8)).map((item) => (
-                  <ResourceCard key={item.id} resource={item} />
-                ))}
-
-                {filteredData.length === 0 && searchTerm && (
-                  <div className="col-span-full text-center py-16 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                    <div className="flex flex-col items-center justify-center">
-                      <Search className="h-20 w-20 text-gray-300 dark:text-gray-600 mb-6" />
-                      <h3 className="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-3">No results found</h3>
-                      <p className="text-gray-500 dark:text-gray-400 text-lg">Try using different keywords or browse categories</p>
+              {/* Featured Section */}
+              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                  <span className="bg-green-100 text-green-700 p-1 rounded mr-2">
+                    <BookOpen className="h-5 w-5" />
+                  </span>
+                  Featured Resources
+                </h2>
+                
+                {/* Featured Card - Large */}
+                {resources.length > 0 && (
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-gray-200 p-4 mb-4">
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-8 w-8 text-green-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-800 text-lg mb-1">
+                          {resources[0].title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                          {resources[0].description}
+                        </p>
+                        <div className="flex items-center space-x-3">
+                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                            {resources[0].subject}
+                          </span>
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {resources[0].class} {!resources[0].class.includes('ECAT') && !resources[0].class.includes('MDCAT') ? 'Class' : ''}
+                          </span>
+                          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                            {resources[0].board} Board
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 md:mt-0 flex flex-wrap gap-2">
+                        <Link 
+                          href={resources[0].path}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          <span>View</span>
+                        </Link>
+                        <a 
+                          href="https://play.google.com/store/apps/details?id=com.taleemspot.notes"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 512 512">
+                            <path d="M99.617 8.057a50.191 50.191 0 00-38.815-6.713l230.932 230.933 74.846-74.846L99.617 8.057zM32.139 20.116c-6.441 8.563-10.148 19.077-10.148 30.199v411.358c0 11.123 3.708 21.636 10.148 30.199l235.877-235.877L32.139 20.116zM464.261 212.087l-67.266-37.637-81.544 81.544 81.548 81.548 67.273-37.64c16.117-9.03 25.738-25.442 25.738-43.908s-9.621-34.877-25.749-43.907zM291.733 279.711L60.815 510.629c3.786.891 7.639 1.371 11.492 1.371a50.275 50.275 0 0027.31-8.07l266.965-149.372-74.849-74.847z"></path>
+                          </svg>
+                          <span>For Better Experience</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 )}
-
-                {!searchTerm && allResources.length > 8 && <ViewAllButton href="/all-resources" />}
               </div>
+
+              {/* Search Results Label */}
+              {searchTerm && (
+                <div className="mb-4 text-gray-700">
+                  Showing results for: <span className="font-medium text-green-600">"{searchTerm}"</span>
+                  <span className="ml-2 text-sm text-gray-500">({filteredData.length} items found)</span>
+                </div>
+              )}
+
+              {/* Content Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {(searchTerm ? filteredData : filteredData.slice(0, 6)).map((item) => (
+                  <ResourceCard key={item.id} resource={item} />
+                ))}
+                {!searchTerm && filteredData.length > 6 && (
+                  <div className="col-span-full flex justify-center mt-4">
+                    <button 
+                      onClick={() => router.push('/all-resources')}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+                    >
+                      View All Resources
+                    </button>
+                  </div>
+                )}
+                {filteredData.length === 0 && (
+                  <div className="col-span-2 text-center py-8 bg-white rounded-lg shadow">
+                    <div className="flex flex-col items-center justify-center">
+                      <Search className="h-12 w-12 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-600">No results found</h3>
+                      <p className="text-gray-500 mt-2">Try using different keywords or browse categories</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom AdSense Banner */}
+              <AdSenseBanner slot="bottom-banner-slot" format="horizontal" />
+
+              {/* Pagination */}
+              {searchTerm && filteredData.length > 10 && (
+                <div className="flex justify-center mt-8">
+                  <nav className="inline-flex rounded-md shadow-sm">
+                    <button className="py-2 px-4 bg-white border border-gray-300 rounded-l-md text-sm font-medium text-gray-500 hover:bg-gray-50">
+                      Previous
+                    </button>
+                    <button className="py-2 px-4 bg-green-600 border border-green-600 text-sm font-medium text-white">
+                      1
+                    </button>
+                    <button className="py-2 px-4 bg-white border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                      2
+                    </button>
+                    <button className="py-2 px-4 bg-white border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                      3
+                    </button>
+                    <button className="py-2 px-4 bg-white border border-gray-300 rounded-r-md text-sm font-medium text-gray-500 hover:bg-gray-50">
+                      Next
+                    </button>
+                  </nav>
+                </div>
+              )}
             </div>
 
             {/* Right Sidebar */}
             <div className="lg:col-span-1">
-              {/* Competitive Exams Section */}
-              <SidebarSection
-                title="Competitive Exams"
-                subtitle="Prepare for Competitive Exams"
-                icon={Star}
-                colorScheme="yellow"
-                showSerialNumbers={true}
-                items={[
-                  { name: 'CSS', count: cssCount, href: '/CSS' },
-                  { name: 'NTS', count: ntsCount, href: '/NTS' },
-                  { name: 'PPSC', count: ppscCount, href: '/PPSC' },
-                  { name: 'FPSC', count: '50+', href: '/FPSC' },
-                  { name: 'PMS', count: '30+', href: '/PMS' },
-                ]}
-                viewAllLink="/competitive-exams"
-              />
+              {/* Categories */}
+              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h3 className="font-bold text-gray-800 mb-3 pb-2 border-b flex items-center">
+                  <BookOpen className="h-5 w-5 mr-2 text-green-600" />
+                  Subject Categories
+                </h3>
+                <div className="space-y-2">
+                  {subjectCategories.slice(0, 6).map((category) => (
+                    <Link
+                      href={`/subject/${category.name}`}
+                      key={category.id}
+                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
+                          <BookOpen className="h-4 w-4 text-green-600" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">
+                          {category.name}
+                        </span>
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        {category.count}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                {subjectCategories.length > 6 && (
+                  <Link href="/all-subjects" className="mt-3 w-full text-center text-sm text-green-600 hover:text-green-800 py-2 block">
+                    View All Categories
+                  </Link>
+                )}
+              </div>
+              
+              {/* Stats Card */}
+              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-green-600" />
+                  Our Stats
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Total Notes</span>
+                    <span className="font-bold text-green-600">{allResources.length}+</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Past Papers</span>
+                    <span className="font-bold text-green-600">{allResources.length}+</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Students</span>
+                    <span className="font-bold text-green-600">10,000+</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Daily Visitors</span>
+                    <span className="font-bold text-green-600">5,000+</span>
+                  </div>
+                </div>
+              </div>
 
-              {/* University Section */}
-              <SidebarSection
-                title="University"
-                subtitle="Resources for Higher Education"
-                icon={Users}
-                colorScheme="blue"
-                showSerialNumbers={true}
-                items={classCategories
-                  .filter((cat) => cat.category === 'University')
-                  .map((cat) => ({
-                    name: cat.name,
-                    count: cat.count,
-                    href: `/${cat.id}`,
-                  }))}
-                viewAllLink="/university"
-              />
-
-              {/* General Section */}
-              <SidebarSection
-                title="General"
-                subtitle="Miscellaneous Resources"
-                icon={BookOpen}
-                colorScheme="gray"
-                showSerialNumbers={true}
-                items={[
-                  { name: 'Urdu Calligraphy', count: '10+', href: '/UrduCalligraphy' },
-                  { name: 'English Calligraphy', count: '15+', href: '/EnglishCalligraphy' },
-                  { name: 'English Language', count: '20+', href: '/EnglishLanguage' },
-                  { name: 'General Resources', count: '50+', href: '/general' },
-                ]}
-                viewAllLink="/general"
-              />
+              {/* AdSense Banner */}
+              <AdSenseBanner slot="sidebar-banner-slot" format="vertical" />
             </div>
           </div>
         </div>
 
-        <Footer />
+        {/* Footer */}
+        <footer className="bg-gray-900 text-white mt-12">
+          {/* Main Footer */}
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div>
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+                    <BookOpen className="h-6 w-6 text-green-600" />
+                  </div>
+                  <span className="text-xl font-bold">TaleemSpot</span>
+                </div>
+                <p className="text-gray-400 text-sm">
+                  Your ultimate destination for educational resources, past papers, and notes. We're dedicated to helping students achieve academic excellence.
+                </p>
+                <div className="mt-4 flex space-x-4">
+                  <a href="#" className="text-gray-400 hover:text-white">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
+                  </a>
+                  <a href="#" className="text-gray-400 hover:text-white">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                  </a>
+                  <a href="#" className="text-gray-400 hover:text-white">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/></svg>
+                  </a>
+                  <a href="#" className="text-gray-400 hover:text-white">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  </a>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-bold text-lg mb-4">Quick Links</h4>
+                <ul className="space-y-2 text-sm">
+                  <li><a href="/" className="text-gray-400 hover:text-white flex items-center">
+                    <ChevronDown className="h-3 w-3 mr-2 transform rotate-90" /> Home
+                  </a></li>
+                  <li><a href="/Punjab10thPastPapers" className="text-gray-400 hover:text-white flex items-center">
+                    <ChevronDown className="h-3 w-3 mr-2 transform rotate-90" /> 10th Class Past Papers
+                  </a></li>
+                  <li><a href="/Punjab9thPastPapers" className="text-gray-400 hover:text-white flex items-center">
+                    <ChevronDown className="h-3 w-3 mr-2 transform rotate-90" /> 9th Class Past Papers
+                  </a></li>
+                  <li><a href="/PunjabECATPastPapers" className="text-gray-400 hover:text-white flex items-center">
+                    <ChevronDown className="h-3 w-3 mr-2 transform rotate-90" /> ECAT Past Papers
+                  </a></li>
+                  <li><a href="/PunjabMDCATPastPapers" className="text-gray-400 hover:text-white flex items-center">
+                    <ChevronDown className="h-3 w-3 mr-2 transform rotate-90" /> MDCAT Past Papers
+                  </a></li>
+                  <li><a href="https://play.google.com/store/apps/details?id=com.taleemspot.notes" className="text-gray-400 hover:text-white flex items-center">
+                    <ChevronDown className="h-3 w-3 mr-2 transform rotate-90" /> Download App
+                  </a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-bold text-lg mb-4">Contact</h4>
+                <div className="space-y-3 text-sm">
+                  <p className="flex items-center text-gray-400">
+                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    info@taleemspot.com
+                  </p>
+                  <p className="flex items-center text-gray-400">
+                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Faisalabad, Punjab, Pakistan
+                  </p>
+                  <p className="flex items-center text-gray-400">
+                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    +92 300 1234567
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <h5 className="font-medium mb-2">Subscribe to our newsletter</h5>
+                  <form className="flex">
+                    <input
+                      type="email"
+                      placeholder="Enter your email"
+                      className="py-2 px-3 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-1 focus:ring-green-500 w-full text-sm"
+                    />
+                    <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-r-lg text-sm transition-colors">
+                      Subscribe
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bottom Footer */}
+          <div className="border-t border-gray-800 py-4">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
+              <div className="mb-2 md:mb-0">
+                &copy; 2025 TaleemSpot. All rights reserved.
+              </div>
+              <div className="flex space-x-4">
+                <Link href="/privacy-policy" className="hover:text-white">Privacy Policy</Link>
+                <Link href="/terms-of-service" className="hover:text-white">Terms of Service</Link>
+                <Link href="/cookie-policy" className="hover:text-white">Cookie Policy</Link>
+                <Link href="/sitemap" className="hover:text-white">Sitemap</Link>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </>
   );
