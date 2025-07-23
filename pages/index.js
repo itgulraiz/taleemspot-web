@@ -26,6 +26,30 @@ function extractDriveId(url) {
   }
 }
 
+// Helper function to generate SEO-friendly resource URL paths
+function generateResourcePath(item) {
+  const segments = [];
+  
+  // Build URL segments in proper order based on resource metadata
+  if (item.province) segments.push(item.province.toLowerCase());
+  if (item.class && item.class !== 'General') segments.push(item.class.toLowerCase());
+  if (item.type) segments.push(item.type.toLowerCase());
+  
+  // Add subject if available
+  if (item.subject && item.subject !== 'General') {
+    segments.push(item.subject.toLowerCase().replace(/\s+/g, '-'));
+  }
+  
+  // Add chapter/year info if available
+  if (item.chapter) segments.push(item.chapter.toLowerCase().replace(/\s+/g, '-'));
+  if (item.year && item.year !== 'N/A') segments.push(item.year);
+  
+  // Add document ID at the end for specific resource
+  if (item.documentId) segments.push(item.documentId);
+  
+  return segments.join('/');
+}
+
 // Sample authors data
 const authors = [
   'Muhammad Ali Khan', 'Fatima Ahmed', 'Ahmed Hassan', 'Ayesha Malik', 'Hassan Raza',
@@ -373,12 +397,10 @@ export async function getStaticProps() {
                     collection: collectionName,
                     documentId: doc.id,
                     itemIndex: index,
-                    // Updated path to class/type/documentId format
-                    path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                     author: data.userInfo?.authorName || getRandomAuthor(),
                     category,
                     province,
-                    authorImage: data.userInfo?.authorImage || null, // Added for potential author image
+                    authorImage: data.userInfo?.authorImage || null,
                   };
                   allData.push(resource);
                 }
@@ -400,12 +422,10 @@ export async function getStaticProps() {
                 collection: collectionName,
                 documentId: doc.id,
                 itemIndex: 0,
-                // Updated path to class/type/documentId format
-                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
-                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
+                authorImage: data.userInfo?.authorImage || null,
               };
               allData.push(resource);
             } else if (data.metadata?.resourceType === 'Quiz' && data.academicInfo?.quiz) {
@@ -425,12 +445,10 @@ export async function getStaticProps() {
                 collection: collectionName,
                 documentId: doc.id,
                 itemIndex: 0,
-                // Updated path to class/type/documentId format
-                path: `/${classLevel || 'general'}/${contentType.toLowerCase()}/${doc.id}`,
                 author: data.userInfo?.authorName || getRandomAuthor(),
                 category,
                 province,
-                authorImage: data.userInfo?.authorImage || null, // Added for potential author image
+                authorImage: data.userInfo?.authorImage || null,
                 quiz: data.academicInfo.quiz,
               };
               allData.push(resource);
@@ -785,9 +803,9 @@ const TaleemSpot = ({
                 items={latestNews.map((news, index) => ({
                   name: news.title,
                   badge: index === 0 ? 'Trending News' : null,
-                  href: '#',
+                  href: `/resource/news/${news.id}`,
                 }))}
-                viewAllLink="/all-news"
+                viewAllLink="/resource/news"
                 badgeColors={{
                   'Trending News': 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
                 }}
@@ -805,9 +823,9 @@ const TaleemSpot = ({
                   .map((cat) => ({
                     name: cat.name,
                     count: cat.count,
-                    href: `/${cat.id}`,
+                    href: `/resource/${cat.category.toLowerCase()}/${cat.name.replace(' Class', '').toLowerCase()}`,
                   }))}
-                viewAllLink="/all-classes"
+                viewAllLink="/resource/classes"
               />
 
               {/* Entry Test Section */}
@@ -818,13 +836,13 @@ const TaleemSpot = ({
                 colorScheme="purple"
                 showSerialNumbers={true}
                 items={[
-                  { name: 'MDCAT', count: mdcatCount, href: '/MDCAT' },
-                  { name: 'ECAT', count: ecatCount, href: '/ECAT' },
-                  { name: 'NUMS', count: numsCount, href: '/NUMS' },
-                  { name: 'AMC', count: amcCount, href: '/AMC' },
-                  { name: 'PMA', count: pmaCount, href: '/PMA' },
+                  { name: 'MDCAT', count: mdcatCount, href: '/resource/mdcat' },
+                  { name: 'ECAT', count: ecatCount, href: '/resource/ecat' },
+                  { name: 'NUMS', count: numsCount, href: '/resource/nums' },
+                  { name: 'AMC', count: amcCount, href: '/resource/amc' },
+                  { name: 'PMA', count: pmaCount, href: '/resource/pma' },
                 ]}
-                viewAllLink="/entry-tests"
+                viewAllLink="/resource/entry-tests"
               />
             </div>
 
@@ -850,7 +868,13 @@ const TaleemSpot = ({
               {/* Content Grid - Exactly 8 Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
                 {(searchTerm ? filteredData.slice(0, 12) : filteredData.slice(0, 8)).map((item) => (
-                  <ResourceCard key={item.id} resource={item} />
+                  <ResourceCard 
+                    key={item.id} 
+                    resource={{
+                      ...item,
+                      path: `/resource/${generateResourcePath(item)}`
+                    }} 
+                  />
                 ))}
 
                 {filteredData.length === 0 && searchTerm && (
@@ -863,7 +887,7 @@ const TaleemSpot = ({
                   </div>
                 )}
 
-                {!searchTerm && allResources.length > 8 && <ViewAllButton href="/all-resources" />}
+                {!searchTerm && allResources.length > 8 && <ViewAllButton href="/resource/all-resources" />}
               </div>
             </div>
 
@@ -877,13 +901,13 @@ const TaleemSpot = ({
                 colorScheme="yellow"
                 showSerialNumbers={true}
                 items={[
-                  { name: 'CSS', count: cssCount, href: '/CSS' },
-                  { name: 'NTS', count: ntsCount, href: '/NTS' },
-                  { name: 'PPSC', count: ppscCount, href: '/PPSC' },
-                  { name: 'FPSC', count: '50+', href: '/FPSC' },
-                  { name: 'PMS', count: '30+', href: '/PMS' },
+                  { name: 'CSS', count: cssCount, href: '/resource/css' },
+                  { name: 'NTS', count: ntsCount, href: '/resource/nts' },
+                  { name: 'PPSC', count: ppscCount, href: '/resource/ppsc' },
+                  { name: 'FPSC', count: '50+', href: '/resource/fpsc' },
+                  { name: 'PMS', count: '30+', href: '/resource/pms' },
                 ]}
-                viewAllLink="/competitive-exams"
+                viewAllLink="/resource/competitive-exams"
               />
 
               {/* University Section */}
@@ -898,9 +922,9 @@ const TaleemSpot = ({
                   .map((cat) => ({
                     name: cat.name,
                     count: cat.count,
-                    href: `/${cat.id}`,
+                    href: `/resource/university/${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
                   }))}
-                viewAllLink="/university"
+                viewAllLink="/resource/university"
               />
 
               {/* General Section */}
@@ -911,12 +935,12 @@ const TaleemSpot = ({
                 colorScheme="gray"
                 showSerialNumbers={true}
                 items={[
-                  { name: 'Urdu Calligraphy', count: '10+', href: '/UrduCalligraphy' },
-                  { name: 'English Calligraphy', count: '15+', href: '/EnglishCalligraphy' },
-                  { name: 'English Language', count: '20+', href: '/EnglishLanguage' },
-                  { name: 'General Resources', count: '50+', href: '/general' },
+                  { name: 'Urdu Calligraphy', count: '10+', href: '/resource/urdu-calligraphy' },
+                  { name: 'English Calligraphy', count: '15+', href: '/resource/english-calligraphy' },
+                  { name: 'English Language', count: '20+', href: '/resource/english-language' },
+                  { name: 'General Resources', count: '50+', href: '/resource/general' },
                 ]}
-                viewAllLink="/general"
+                viewAllLink="/resource/general"
               />
             </div>
           </div>
