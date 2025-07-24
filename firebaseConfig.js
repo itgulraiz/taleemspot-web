@@ -1,7 +1,7 @@
 // firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage"; // 🔁 Add this
+import { getStorage } from "firebase/storage"; // 🔁 Add thi
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
